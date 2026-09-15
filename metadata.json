@@ -1,0 +1,6 @@
+{
+  "name": "Melhor Forma Treino V1 Lite",
+  "description": "Montador de ficha de treino para celular compartilhável pelo WhatsApp sem cadastro nem banco de dados, com vídeos demonstrativos de cada exercício reproduzidos diretamente dentro do app via YouTube.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
