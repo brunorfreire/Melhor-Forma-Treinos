@@ -46,19 +46,34 @@
         }
       })();
     </script>
+    <script>
+      // Retenção imediata do evento nativo 'beforeinstallprompt' antes da execução de qualquer framework
+      window.__mfDeferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__mfDeferredPrompt = e;
+        try {
+          window.dispatchEvent(new CustomEvent('mf:beforeinstallprompt', { detail: e }));
+        } catch (_) {}
+      });
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Melhor Forma Treino V1 Lite</title>
-    <meta name="description" content="Montador de ficha de treino para celular compartilhável pelo WhatsApp sem cadastro nem banco de dados, com vídeos demonstrativos de cada exercício reproduzidos diretamente dentro do app via YouTube." />
-    <meta property="og:title" content="Melhor Forma Treino V1 Lite" />
-    <meta property="og:description" content="Ficha de treino personalizada pronta para celular e compartilhamento no WhatsApp." />
-    <meta name="theme-color" content="#FF6B6B" />
+    <title>Melhor Forma Play | Treinos e Longevidade 40+</title>
+    <meta name="description" content="Plataforma de streaming de treinos sob demanda, longevidade e força para a vida 40+, com biblioteca de exercícios em vídeo e fichas interativas." />
+    <meta property="og:title" content="Melhor Forma Play | Treinos e Longevidade 40+" />
+    <meta property="og:description" content="Plataforma de treinos físicos sob demanda e longevidade para 40+." />
+    <meta name="theme-color" content="#0A182F" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Guia 7 Passos" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Melhor Forma Play" />
+    <!-- Ícone Oficial com cache-busting (?v=2) para atualização imediata no navegador -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=2" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg?v=2" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">

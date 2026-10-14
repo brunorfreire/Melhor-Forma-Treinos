@@ -38,6 +38,7 @@ import { PRESET_TEMPLATES } from '../data/defaultPlans';
 import { resolveExerciseYouTubeId } from '../utils/youtube';
 import { getSavedStudents, saveStudentWorkout } from '../utils/studentStorage';
 import { ExerciseThumbnail } from './ExerciseThumbnail';
+import { MelhorFormaLogo } from './MelhorFormaLogo';
 import { resolveExerciseMedia } from '../utils/exerciseMedia';
 import { TrainerAuthGate, isTrainerAuthenticated, logoutTrainer } from './trainer/TrainerAuthGate';
 import { TrainerCatalogTab } from './trainer/TrainerCatalogTab';
@@ -383,9 +384,7 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
       {/* Top Header */}
       <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 shadow-lg shadow-black/40">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
-            <Dumbbell className="w-4 h-4 text-emerald-400" />
-          </div>
+          <MelhorFormaLogo size={32} />
           <div className="min-w-0">
             <h1 className="text-xs sm:text-sm font-bold tracking-tight text-white leading-tight truncate">
               Painel do Treinador

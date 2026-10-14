@@ -13,6 +13,8 @@ import { RestTimer } from './components/RestTimer';
 import { StudentHistoryModal } from './components/StudentHistoryModal';
 import { saveStudentWorkout } from './utils/studentStorage';
 import { PWAInstallButton } from './components/PWAInstallButton';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { MelhorFormaLogo } from './components/MelhorFormaLogo';
 import { 
   Play, 
   Sparkles, 
@@ -148,40 +150,35 @@ export default function App() {
       {/* ========================================================================= */}
       <nav className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/90 px-3 sm:px-6 py-2 transition shadow-lg shadow-black/40">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          {/* Top Row on Mobile: Brand Logo & 40+ Tagline */}
-          <div className="flex items-center justify-between w-full sm:w-auto">
+          {/* Top Row on Mobile: Brand Logo & PWA Install Button */}
+          <div className="flex items-center justify-between w-full sm:w-auto gap-2">
             <div 
               onClick={() => setViewMode('home')}
-              className="flex items-center gap-2 cursor-pointer group shrink-0"
+              className="flex items-center gap-2 cursor-pointer group shrink-0 min-w-0"
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter') setViewMode('home'); }}
-              aria-label="Ir para a página inicial"
+              aria-label="Ir para a página inicial do Melhor Forma Play"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-slate-950 shadow-md shadow-emerald-950/50 group-hover:scale-105 transition shrink-0">
-                <Play className="w-4 h-4 fill-current ml-0.5" />
-              </div>
-              <div className="flex flex-col">
+              <MelhorFormaLogo size={34} className="sm:w-9 sm:h-9 shrink-0" />
+              <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm sm:text-base font-black tracking-tight text-white group-hover:text-emerald-300 transition leading-none">
+                  <span className="text-sm sm:text-base font-black tracking-tight text-white group-hover:text-emerald-300 transition leading-none truncate">
                     Melhor Forma Play
                   </span>
                   <span className="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0 leading-none">
                     40+
                   </span>
                 </div>
-                <span className="text-[10px] text-emerald-400/90 font-medium tracking-tight mt-0.5 hidden xs:block">
+                <span className="text-[10px] text-emerald-400/90 font-medium tracking-tight mt-0.5 hidden sm:block">
                   Treine para viver mais e melhor
                 </span>
               </div>
             </div>
 
-            {/* Right side of top row: PWA Install Button & micro badge */}
-            <div className="flex items-center gap-2">
-              <PWAInstallButton />
-              <span className="text-[10px] text-emerald-400 font-bold xs:hidden bg-emerald-950/50 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-                Longevidade
-              </span>
+            {/* Right side of top row: Header Install Button (always fits cleanly) */}
+            <div className="flex items-center gap-2 shrink-0">
+              <PWAInstallButton variant="header" />
             </div>
           </div>
 
@@ -241,6 +238,9 @@ export default function App() {
           </div>
         </div>
       </nav>
+
+      {/* Faixa Exclusiva de Instalação Mobile (PWAInstallBanner) */}
+      <PWAInstallBanner />
 
       {/* ========================================================================= */}
       {/* ACTIVE VIEW ROUTING */}
