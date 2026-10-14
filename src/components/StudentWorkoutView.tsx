@@ -19,6 +19,11 @@ import {
 import { WorkoutPlan, WorkoutSession, Exercise } from '../types';
 import { formatStudentFinishedMessage, createWhatsAppShareLink } from '../utils/whatsapp';
 import { resolveExerciseMedia } from '../utils/exerciseMedia';
+import { 
+  saveActiveWorkoutSession, 
+  clearActiveWorkoutSession, 
+  recordCompletedWorkout 
+} from '../utils/studentProgressService';
 import { ExerciseThumbnail } from './ExerciseThumbnail';
 
 interface StudentWorkoutViewProps {
@@ -51,10 +56,27 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   }
 
   const toggleExerciseComplete = (exerciseId: string) => {
-    setCompletedExerciseIds(prev => ({
-      ...prev,
-      [exerciseId]: !prev[exerciseId]
-    }));
+    const updated = {
+      ...completedExerciseIds,
+      [exerciseId]: !completedExerciseIds[exerciseId]
+    };
+    setCompletedExerciseIds(updated);
+
+    // Salva progresso na sessão ativa para "Continue de onde parou"
+    const completedList = Object.keys(updated).filter(k => updated[k]);
+    saveActiveWorkoutSession({
+      workoutId: plan.id,
+      workoutTitle: activeSession.name,
+      category: 'forca_40_plus',
+      duration: '30 min',
+      coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
+      startedAt: new Date().toISOString(),
+      lastActiveAt: new Date().toISOString(),
+      completedExercisesIds: completedList,
+      totalExercises: activeSession.exercises.length,
+      currentExerciseIndex: activeSessionIndex,
+      plan
+    });
   };
 
   const totalExercises = activeSession.exercises.length;
@@ -63,6 +85,15 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   const isSessionFinished = totalExercises > 0 && completedCount === totalExercises;
 
   const handleNotifyTrainer = () => {
+    // Registra no histórico real de conclusão
+    recordCompletedWorkout(
+      plan.id,
+      activeSession.name,
+      'forca_40_plus',
+      30
+    );
+    clearActiveWorkoutSession();
+
     const text = formatStudentFinishedMessage(plan, activeSession);
     const url = createWhatsAppShareLink(plan.trainerPhone || '', text);
     window.open(url, '_blank');

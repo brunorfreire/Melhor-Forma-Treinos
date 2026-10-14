@@ -69,6 +69,15 @@ export const CATALOG_COLLECTIONS: CollectionMeta[] = [
  * Cada uma com nível iniciante, intermediário ou avançado,
  * objetivos claros, duração e status de publicação.
  */
+export const DEFAULT_FREE_WORKOUT_IDS: string[] = [
+  'w-40p-01', 'w-40p-05',
+  'w-sup-01', 'w-sup-05',
+  'w-inf-01', 'w-inf-05',
+  'w-fb-01', 'w-fb-05',
+  'w-cardio-01', 'w-cardio-05',
+  'w-mob-01', 'w-mob-05'
+];
+
 export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
   // =========================================================================
   // 1. FORÇA PARA A VIDA 40+ (12 Sessões)
@@ -84,6 +93,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Reativar grandes grupos musculares sem sobrecarga articular.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -97,6 +107,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Melhorar a sustentação postural e a facilidade ao sentar e levantar.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -110,6 +121,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Fortalecer a cintura pélvica e a estabilização lombar.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -123,6 +135,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Elevar a disposição matinal com ativação articular consciente.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -136,6 +149,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Aumentar a densidade de força e a queima energética de repouso.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -149,6 +163,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Consolidar força real para levantar cargas sem incômodos nas costas.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -162,6 +177,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Equalizar tensões musculares na cintura escapular.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -175,6 +191,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Promover resistência muscular localizada e capacidade cardiorrespiratória.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -188,6 +205,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Proteger fêmur, vértebras e punhos contra perda de massa óssea.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -201,6 +219,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Manter a velocidade de reação e a potência nas pernas.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -214,6 +233,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Maximizar força funcional sustentável e autonomia física.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -227,6 +247,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Celebrar a independência funcional máxima com técnica impecável.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
 
@@ -244,6 +265,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Reeducar o alinhamento escapular e fortalecer peitoral.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -257,6 +279,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Fortalecer a musculatura posterior e estabilizar ombros.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -270,6 +293,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Desenvolver tônus em bíceps e tríceps sem sobrecarga.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -283,6 +307,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Prevenir tendinopatias e aumentar a firmeza na pegada.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -296,6 +321,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Desenvolver força funcional simétrica no tronco.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -309,6 +335,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Definição harmoniosa de ombros e tríceps.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -322,6 +349,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Aumentar a força de tração e a postura ereta.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -335,6 +363,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Fortalecer todo o tronco com versatilidade e autonomia.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -348,6 +377,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Estimular massa magra nos membros superiores.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -361,6 +391,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Desenvolver força de tração de alto nível.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -374,6 +405,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Estética funcional e estabilidade em 360 graus.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -387,6 +419,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Consolidar força, tônus e definição nos braços e tronco.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
 
@@ -404,6 +437,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Fortalecer quadríceps e estabilizar os joelhos.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -417,6 +451,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Reativar glúteos dormentes e aliviar a lombar.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -430,6 +465,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Aumentar a dorsiflexão do tornozelo e a força da panturrilha.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -443,6 +479,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Sensação de pernas firmes e dispostas.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -456,6 +493,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Construir força funcional para subidas e escadas.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -469,6 +507,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Prevenir dores no quadril e fortalecer o glúteo.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -482,6 +521,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Equilíbrio e tônus nas duas pernas igualmente.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -495,6 +535,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Firmeza sustentável em coxas e glúteos.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -508,6 +549,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Densidade muscular profunda para os membros inferiores.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -521,6 +563,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Capacidade funcional robusta para caminhar e viajar sem cansaço.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -534,6 +577,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Potência na extensão do quadril e estabilização lombar.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -547,6 +591,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Excelente condicionamento dos membros inferiores.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
 
@@ -564,6 +609,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Gasto calórico saudável e ativação corporal global.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -577,6 +623,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Melhorar o fôlego sem sobrecarregar um único grupo muscular.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -590,6 +637,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Lubrificação articular e despertar motor.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -603,6 +651,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Consistência sem perder o dia de treino.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -616,6 +665,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Estímulo metabólico e força funcional completa.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -629,6 +679,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Coordenação neuromuscular e queima energética.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -642,6 +693,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Melhora da composição corporal sustentável.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -655,6 +707,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Eficiência cardiovascular e força muscular em conjunto.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -668,6 +721,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Resistência de força avançada.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -681,6 +735,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Potência metabólica e força integral.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -694,6 +749,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Ativação máxima com controle biomecânico rigoroso.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -707,6 +763,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Vigor pleno para a mulher madura moderna.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
 
@@ -724,6 +781,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Ativação cardiovascular com zero impacto nas articulações.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -737,6 +795,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Elevar a frequência cardíaca sem saltos nem sobrecarga de joelho.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -750,6 +809,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Alívio de peso nas pernas e melhora do condicionamento geral.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -763,6 +823,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Controle respiratório e relaxamento dinâmico.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -776,6 +837,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Melhora do VO2 máx sem desgaste físico excessivo.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -789,6 +851,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Gasto calórico elevado mantendo as articulações protegidas.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -802,6 +865,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Fôlego e força de propulsão nos membros inferiores.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -815,6 +879,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Resistência duradoura e sensação imediata de bem-estar.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -828,6 +893,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Eficiência cardiovascular máxima com respeito à estrutura articular.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -841,6 +907,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Potência aeróbia e tônus muscular simultâneos.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -854,6 +921,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Excelente condicionamento cardíaco e pulmonar.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -867,6 +935,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Capacidade funcional plena para viver com vigor sem limites.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
 
@@ -884,6 +953,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Eliminar a rigidez matinal e destravar as articulações.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -897,6 +967,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Fortalecer os receptores neurais dos pés e tornozelos.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -910,6 +981,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Prevenir e aliviar incômodos na região lombar e sacral.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -923,6 +995,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Dissolver tensões acumuladas nos ombros e pescoço.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -936,6 +1009,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Destravar o quadril e proteger a coluna e joelhos.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'free',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -949,6 +1023,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Construir um cinturão de estabilidade muscular protetor.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -962,6 +1037,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Passos seguros e marcha firme em qualquer terreno.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -975,6 +1051,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Mobilidade real que se traduz em facilidade de movimento.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'publicado',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -988,6 +1065,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Alívio global de tensões crônicas da cadeia posterior.',
     coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -1001,6 +1079,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Agilidade e confiança em situações imprevistas do dia a dia.',
     coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     status: 'revisao',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -1014,6 +1093,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Amplitude máxima e leveza em todo o corpo.',
     coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   },
   {
@@ -1027,6 +1107,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     objective: 'Consolidação de uma postura graciosa, forte e livre de dores.',
     coverImage: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80',
     status: 'rascunho',
+    accessLevel: 'premium',
     updatedAt: '2026-10-13T10:00:00Z'
   }
 ];

@@ -18,7 +18,9 @@ import {
   getHydratedWorkout, 
   getAllCentralExercises, 
   getAllWorkoutExerciseItems, 
-  saveAllWorkoutExerciseItems 
+  saveAllWorkoutExerciseItems,
+  resetCatalogToDefaults,
+  updateWorkoutAccessLevel
 } from '../../data/workoutCatalogService';
 import { 
   Play, 
@@ -43,7 +45,11 @@ import {
   Layers, 
   Activity, 
   Heart, 
-  Scale 
+  Scale,
+  RotateCcw,
+  Crown,
+  Lock,
+  Unlock
 } from 'lucide-react';
 
 interface TrainerCatalogTabProps {
@@ -59,6 +65,7 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [selectedLevel, setSelectedLevel] = useState<string>('todos');
   const [selectedStatus, setSelectedStatus] = useState<string>('todos');
+  const [selectedAccess, setSelectedAccess] = useState<string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Modal de Edição de Sessão
@@ -66,6 +73,7 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
   const [workoutRelations, setWorkoutRelations] = useState<WorkoutExerciseItem[]>([]);
   const [showAddExerciseToWorkout, setShowAddExerciseToWorkout] = useState(false);
   const [exerciseSearchTerm, setExerciseSearchTerm] = useState('');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const centralExercises = useMemo(() => getAllCentralExercises(), []);
 
@@ -79,6 +87,8 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
   const publishedCount = workouts.filter(w => w.status === 'publicado').length;
   const reviewCount = workouts.filter(w => w.status === 'revisao').length;
   const draftCount = workouts.filter(w => w.status === 'rascunho').length;
+  const freeCount = workouts.filter(w => w.accessLevel === 'free').length;
+  const premiumCount = workouts.filter(w => w.accessLevel === 'premium').length;
 
   // Filtragem
   const filteredWorkouts = useMemo(() => {
@@ -86,6 +96,7 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
       if (selectedCategory !== 'todos' && w.category !== selectedCategory) return false;
       if (selectedLevel !== 'todos' && w.level !== selectedLevel) return false;
       if (selectedStatus !== 'todos' && w.status !== selectedStatus) return false;
+      if (selectedAccess !== 'todos' && w.accessLevel !== selectedAccess) return false;
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
         const matchesTitle = w.title.toLowerCase().includes(q);
@@ -95,12 +106,19 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
       }
       return true;
     });
-  }, [workouts, selectedCategory, selectedLevel, selectedStatus, searchTerm]);
+  }, [workouts, selectedCategory, selectedLevel, selectedStatus, selectedAccess, searchTerm]);
 
   // Alternar status de publicação com 1 clique
   const handleTogglePublish = (workout: CatalogWorkout) => {
     const nextStatus: WorkoutStatus = workout.status === 'publicado' ? 'rascunho' : 'publicado';
     updateWorkoutStatus(workout.id, nextStatus);
+    refreshWorkouts();
+  };
+
+  // Alternar nível de acesso (Gratuito / Premium) com 1 clique
+  const handleToggleAccessLevel = (workout: CatalogWorkout) => {
+    const nextAccess = workout.accessLevel === 'free' ? 'premium' : 'free';
+    updateWorkoutAccessLevel(workout.id, nextAccess);
     refreshWorkouts();
   };
 
@@ -193,6 +211,13 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
     });
   };
 
+  // Restaurar aos padrões de fábrica
+  const handleResetFactory = () => {
+    resetCatalogToDefaults();
+    refreshWorkouts();
+    setShowResetConfirm(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner & Métricas do Catálogo de 72 Treinos */}
@@ -216,22 +241,26 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
           </div>
 
           {/* Quick Metrics Badges */}
-          <div className="grid grid-cols-4 gap-2 text-center bg-slate-950 p-2 rounded-xl border border-slate-800/80 shrink-0">
-            <div className="px-2">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total</span>
-              <span className="text-sm font-black text-white">{totalCount}</span>
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-2 text-center bg-slate-950 p-2 rounded-xl border border-slate-800/80 shrink-0">
+            <div className="px-1.5 sm:px-2">
+              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-semibold block">Total</span>
+              <span className="text-xs sm:text-sm font-black text-white">{totalCount}</span>
             </div>
-            <div className="px-2 border-l border-slate-800">
-              <span className="text-[10px] text-emerald-400 uppercase font-semibold block">Publicados</span>
-              <span className="text-sm font-black text-emerald-400">{publishedCount}</span>
+            <div className="px-1.5 sm:px-2 border-l border-slate-800">
+              <span className="text-[9px] sm:text-[10px] text-emerald-400 uppercase font-semibold block">Grátis</span>
+              <span className="text-xs sm:text-sm font-black text-emerald-400">{freeCount}</span>
             </div>
-            <div className="px-2 border-l border-slate-800">
-              <span className="text-[10px] text-amber-400 uppercase font-semibold block">Revisão</span>
-              <span className="text-sm font-black text-amber-400">{reviewCount}</span>
+            <div className="px-1.5 sm:px-2 border-l border-slate-800">
+              <span className="text-[9px] sm:text-[10px] text-amber-400 uppercase font-semibold block">Premium</span>
+              <span className="text-xs sm:text-sm font-black text-amber-400">{premiumCount}</span>
             </div>
-            <div className="px-2 border-l border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold block">Rascunho</span>
-              <span className="text-sm font-black text-slate-400">{draftCount}</span>
+            <div className="px-1.5 sm:px-2 border-l border-slate-800">
+              <span className="text-[9px] sm:text-[10px] text-teal-400 uppercase font-semibold block">Publicados</span>
+              <span className="text-xs sm:text-sm font-black text-teal-400">{publishedCount}</span>
+            </div>
+            <div className="px-1.5 sm:px-2 border-l border-slate-800">
+              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-semibold block">Rascunho</span>
+              <span className="text-xs sm:text-sm font-black text-slate-400">{draftCount}</span>
             </div>
           </div>
         </div>
@@ -326,13 +355,45 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
               </button>
             ))}
           </div>
+
+          {/* Filtro por Nível de Acesso (Freemium vs Premium) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar justify-start sm:justify-end pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-800/60">
+            <span className="text-[10px] text-amber-400 font-bold uppercase shrink-0 flex items-center gap-1">
+              <Crown className="w-3 h-3" /> Acesso:
+            </span>
+            {[
+              { id: 'todos', label: 'Todos' },
+              { id: 'free', label: `Grátis (${freeCount})` },
+              { id: 'premium', label: `Premium (${premiumCount})` }
+            ].map(acc => (
+              <button
+                key={acc.id}
+                onClick={() => setSelectedAccess(acc.id)}
+                className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                  selectedAccess === acc.id
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
+                    : 'bg-slate-950 text-slate-400 border border-slate-800'
+                }`}
+              >
+                {acc.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Grid de Treinos */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-slate-400">
+        <div className="flex items-center justify-between text-xs text-slate-400 flex-wrap gap-2">
           <span>Mostrando <strong>{filteredWorkouts.length}</strong> de {workouts.length} sessões</span>
+          <button
+            onClick={() => setShowResetConfirm(true)}
+            className="min-h-[36px] px-3 py-1.5 bg-slate-950 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-800/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+            title="Restaurar dados de fábrica do catálogo (limpa edições salvas no dispositivo)"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Restaurar Fábrica</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -360,17 +421,27 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
 
-                {/* Status Badge */}
+                {/* Status & Access Badges */}
                 <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
-                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border backdrop-blur-md ${
-                    workout.status === 'publicado'
-                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
-                      : workout.status === 'revisao'
-                      ? 'bg-amber-950/80 text-amber-300 border-amber-500/40'
-                      : 'bg-slate-950/80 text-slate-400 border-slate-700'
-                  }`}>
-                    {workout.status === 'publicado' ? '● Publicado' : workout.status === 'revisao' ? '▲ Em Revisão' : '○ Rascunho'}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border backdrop-blur-md ${
+                      workout.status === 'publicado'
+                        ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+                        : workout.status === 'revisao'
+                        ? 'bg-amber-950/80 text-amber-300 border-amber-500/40'
+                        : 'bg-slate-950/80 text-slate-400 border-slate-700'
+                    }`}>
+                      {workout.status === 'publicado' ? '● Publicado' : workout.status === 'revisao' ? '▲ Em Revisão' : '○ Rascunho'}
+                    </span>
+
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border backdrop-blur-md ${
+                      workout.accessLevel === 'free'
+                        ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50'
+                        : 'bg-amber-950/90 text-amber-300 border-amber-500/50'
+                    }`}>
+                      {workout.accessLevel === 'free' ? '★ Grátis' : '👑 Premium'}
+                    </span>
+                  </div>
 
                   <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-slate-300">
                     {workout.duration}
@@ -402,7 +473,7 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
                 </div>
 
                 {/* Action Buttons Row */}
-                <div className="pt-2 border-t border-slate-800/80 flex items-center gap-1.5">
+                <div className="pt-2 border-t border-slate-800/80 flex items-center gap-1.5 flex-wrap">
                   {/* Publicar / Despublicar Toggle */}
                   <button
                     onClick={() => handleTogglePublish(workout)}
@@ -415,6 +486,20 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                     <span>{workout.status === 'publicado' ? 'Publicado' : 'Publicar'}</span>
+                  </button>
+
+                  {/* Alternar Grátis / Premium */}
+                  <button
+                    onClick={() => handleToggleAccessLevel(workout)}
+                    className={`min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition ${
+                      workout.accessLevel === 'free'
+                        ? 'bg-slate-950 hover:bg-amber-950/40 text-slate-300 hover:text-amber-300 border border-slate-800'
+                        : 'bg-amber-500/15 hover:bg-emerald-950/40 text-amber-300 hover:text-emerald-300 border border-amber-500/30'
+                    }`}
+                    title={workout.accessLevel === 'free' ? 'Alterar para Exclusivo Premium' : 'Alterar para Treino Gratuito'}
+                  >
+                    {workout.accessLevel === 'free' ? <Unlock className="w-3.5 h-3.5 text-emerald-400" /> : <Lock className="w-3.5 h-3.5 text-amber-400" />}
+                    <span>{workout.accessLevel === 'free' ? 'Grátis' : 'Premium'}</span>
                   </button>
 
                   {/* Editar Sessão */}
@@ -527,6 +612,20 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
                       <option value="publicado">Publicado no Catálogo</option>
                       <option value="revisao">Em Revisão</option>
                       <option value="rascunho">Rascunho</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-amber-400 block mb-1 flex items-center gap-1">
+                      <Crown className="w-3 h-3" /> Acesso Comercial
+                    </label>
+                    <select
+                      value={editingWorkout.accessLevel}
+                      onChange={(e) => setEditingWorkout({ ...editingWorkout, accessLevel: e.target.value as 'free' | 'premium' })}
+                      className="w-full min-h-[42px] px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white"
+                    >
+                      <option value="free">★ Gratuito (Sessão Modelo Aberta)</option>
+                      <option value="premium">👑 Exclusivo Premium (Assinantes)</option>
                     </select>
                   </div>
                 </div>
@@ -744,6 +843,48 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
                 className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950"
               >
                 Salvar Sessão
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Reset de Fábrica */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">
+                  Restaurar Catálogo aos Padrões?
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Ação irreversível para personalizações locais
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800">
+              Isso apagará alterações de treinos, novos rascunhos criados no navegador e restaurará as <strong>72 sessões originais</strong> e os <strong>46 exercícios centrais</strong> aos dados de fábrica. O aplicativo continuará funcionando perfeitamente.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleResetFactory}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-950"
+              >
+                Confirmar e Restaurar
               </button>
             </div>
           </div>

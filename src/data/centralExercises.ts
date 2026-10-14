@@ -23,7 +23,7 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     youtubeId: 'aclHkVaku9U',
     thumbnailUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=400&q=80',
     licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado',
+    videoValidationStatus: 'pendente_revisao',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
@@ -169,7 +169,7 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     youtubeId: 'wPM8icPu6H8',
     thumbnailUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=400&q=80',
     licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado',
+    videoValidationStatus: 'pendente_revisao',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
@@ -231,7 +231,7 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     youtubeId: 'ELOCsoDSmrg',
     thumbnailUrl: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=400&q=80',
     licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado'
+    videoValidationStatus: 'pendente_revisao'
   },
 
   // =========================================================================
@@ -415,7 +415,7 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     youtubeId: 'CAwf7n6Luuc',
     thumbnailUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=400&q=80',
     licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado'
+    videoValidationStatus: 'pendente_revisao'
   },
 
   // =========================================================================
@@ -583,7 +583,7 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     youtubeId: 'ASdvN_XEl_c',
     thumbnailUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=400&q=80',
     licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado',
+    videoValidationStatus: 'pendente_revisao',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
@@ -683,7 +683,7 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     youtubeId: '3z_pWqK6g6A',
     thumbnailUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=400&q=80',
     licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado',
+    videoValidationStatus: 'pendente_revisao',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
 
@@ -719,7 +719,7 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     youtubeId: '9Fs_2aT-cHQ',
     thumbnailUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=400&q=80',
     licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado',
+    videoValidationStatus: 'pendente_revisao',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
@@ -735,7 +735,7 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     youtubeId: '3z_pWqK6g6A',
     thumbnailUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=400&q=80',
     licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado',
+    videoValidationStatus: 'pendente_revisao',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
@@ -751,7 +751,7 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     youtubeId: '9Fs_2aT-cHQ',
     thumbnailUrl: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=400&q=80',
     licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado',
+    videoValidationStatus: 'pendente_revisao',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {

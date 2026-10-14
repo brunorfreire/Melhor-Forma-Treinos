@@ -125,6 +125,7 @@ export interface CatalogWorkout {
   objective: string;
   coverImage: string;
   status: WorkoutStatus; // 'publicado' | 'rascunho' | 'revisao'
+  accessLevel: 'free' | 'premium'; // Nível de acesso comercial
   authorTrainer?: string;
   updatedAt: string;
 }
@@ -156,4 +157,97 @@ export interface HydratedWorkoutSession {
     alternativeDetails?: CentralExercise;
     alternativeNotes?: string;
   })[];
+}
+
+/* ========================================================================= */
+/* ENTIDADES SAAS, SUPABASE AUTH & CONTROLE DE ACESSO FREEMIUM/PREMIUM       */
+/* ========================================================================= */
+
+export type UserRole = 'student' | 'trainer' | 'admin';
+export type SubscriptionStatus = 'free' | 'active' | 'canceled' | 'past_due' | 'trialing';
+
+export interface UserProfile {
+  id: string;
+  nome: string;
+  email: string;
+  role: UserRole;
+  avatar_url?: string;
+  created_at: string;
+  subscription_status?: SubscriptionStatus;
+}
+
+export interface Product {
+  id: string;
+  nome: string;
+  tipo: 'subscription' | 'one_time';
+  status: 'active' | 'archived';
+  description?: string;
+}
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  product_id: string;
+  status: SubscriptionStatus;
+  current_period_end: string;
+  payment_provider_reference?: string;
+}
+
+export interface Entitlement {
+  id: string;
+  user_id: string;
+  product_id: string;
+  status: 'active' | 'expired';
+  expires_at?: string;
+}
+
+export interface WorkoutAccessRecord {
+  workout_id: string;
+  access_level: 'free' | 'premium';
+}
+
+export interface UserProgressRecord {
+  id: string;
+  user_id: string;
+  workout_id: string;
+  exercise_id?: string;
+  workout_title?: string;
+  category?: WorkoutCollectionCategory;
+  status: 'completed' | 'in_progress';
+  completed_at: string;
+  duration_seconds?: number;
+}
+
+export interface UserFavoriteRecord {
+  user_id: string;
+  workout_id: string;
+  created_at?: string;
+}
+
+/**
+ * Sessão em andamento para retomada ("Continue de onde parou")
+ */
+export interface ActiveWorkoutSession {
+  workoutId: string;
+  workoutTitle: string;
+  category: WorkoutCollectionCategory;
+  duration: string;
+  coverImage: string;
+  startedAt: string;
+  lastActiveAt: string;
+  completedExercisesIds: string[];
+  totalExercises: number;
+  currentExerciseIndex: number;
+  plan: WorkoutPlan;
+}
+
+/**
+ * Estatísticas reais do aluno (sem calorias falsas)
+ */
+export interface StudentProgressStats {
+  completedWorkoutsCount: number;
+  totalTrainingMinutes: number;
+  weeklyFrequency: number;
+  categoryBreakdown: Record<string, number>;
+  lastCompletedDate?: string;
 }

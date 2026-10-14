@@ -7,7 +7,9 @@ import {
   WorkoutSession, 
   Exercise, 
   VideoValidationStatus, 
-  WorkoutStatus 
+  WorkoutStatus,
+  SubscriptionStatus,
+  UserRole
 } from '../types';
 import { CENTRAL_EXERCISES } from './centralExercises';
 import { INITIAL_CATALOG_WORKOUTS, CATALOG_COLLECTIONS } from './catalogWorkouts';
@@ -21,6 +23,7 @@ const RELATIONS_STORAGE_KEY = 'mf_workout_exercises_v2';
  * Obtém todos os treinos do catálogo (com persistência de edições do treinador)
  */
 export function getAllCatalogWorkouts(): CatalogWorkout[] {
+  if (typeof window === 'undefined') return [...INITIAL_CATALOG_WORKOUTS];
   try {
     const saved = localStorage.getItem(WORKOUTS_STORAGE_KEY);
     if (saved) {
@@ -39,6 +42,7 @@ export function getAllCatalogWorkouts(): CatalogWorkout[] {
  * Salva a lista de treinos no localStorage
  */
 export function saveAllCatalogWorkouts(workouts: CatalogWorkout[]): void {
+  if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(WORKOUTS_STORAGE_KEY, JSON.stringify(workouts));
   } catch (e) {
@@ -50,6 +54,7 @@ export function saveAllCatalogWorkouts(workouts: CatalogWorkout[]): void {
  * Obtém todos os exercícios da biblioteca central
  */
 export function getAllCentralExercises(): CentralExercise[] {
+  if (typeof window === 'undefined') return [...CENTRAL_EXERCISES];
   try {
     const saved = localStorage.getItem(EXERCISES_STORAGE_KEY);
     if (saved) {
@@ -68,6 +73,7 @@ export function getAllCentralExercises(): CentralExercise[] {
  * Salva os exercícios centrais no localStorage
  */
 export function saveAllCentralExercises(exercises: CentralExercise[]): void {
+  if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(EXERCISES_STORAGE_KEY, JSON.stringify(exercises));
   } catch (e) {
@@ -79,6 +85,7 @@ export function saveAllCentralExercises(exercises: CentralExercise[]): void {
  * Obtém as relações entre treinos e exercícios
  */
 export function getAllWorkoutExerciseItems(): WorkoutExerciseItem[] {
+  if (typeof window === 'undefined') return [...INITIAL_WORKOUT_EXERCISES];
   try {
     const saved = localStorage.getItem(RELATIONS_STORAGE_KEY);
     if (saved) {
@@ -97,6 +104,7 @@ export function getAllWorkoutExerciseItems(): WorkoutExerciseItem[] {
  * Salva as relações entre treinos e exercícios no localStorage
  */
 export function saveAllWorkoutExerciseItems(items: WorkoutExerciseItem[]): void {
+  if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(RELATIONS_STORAGE_KEY, JSON.stringify(items));
   } catch (e) {
@@ -166,10 +174,40 @@ export function getHydratedWorkout(workoutId: string): HydratedWorkoutSession | 
 }
 
 /**
+ * Verifica se um usuário possui autorização para executar um treino específico.
+ * Não confia exclusivamente em estado do frontend: valida explicitamente o nível de acesso.
+ */
+export function canUserAccessWorkout(
+  workout: CatalogWorkout, 
+  userStatus?: SubscriptionStatus,
+  userRole?: UserRole
+): boolean {
+  // Treinos gratuitos são liberados para todos (com ou sem login)
+  if (workout.accessLevel === 'free') return true;
+
+  // Treinador e Administrador possuem acesso total irrestrito
+  if (userRole === 'trainer' || userRole === 'admin') return true;
+
+  // Assinantes com status ativo ou em período de testes
+  return userStatus === 'active' || userStatus === 'trialing';
+}
+
+/**
  * Converte um treino do catálogo diretamente em um WorkoutPlan para execução
  * imediata no StudentWorkoutView sem duplicar vídeos.
+ * Valida autorização: caso seja Premium e o usuário não tenha permissão, retorna null.
  */
-export function convertCatalogWorkoutToWorkoutPlan(workout: CatalogWorkout): WorkoutPlan {
+export function convertCatalogWorkoutToWorkoutPlan(
+  workout: CatalogWorkout,
+  userStatus?: SubscriptionStatus,
+  userRole?: UserRole
+): WorkoutPlan | null {
+  // Barreira de segurança: impede execução de treinos protegidos sem permissão
+  if (!canUserAccessWorkout(workout, userStatus, userRole)) {
+    console.warn(`[Acesso Bloqueado] Tentativa de executar treino Premium (${workout.id}) sem assinatura ativa.`);
+    return null;
+  }
+
   const hydrated = getHydratedWorkout(workout.id);
   const exercisesList: Exercise[] = hydrated ? hydrated.exercises : [];
 
@@ -190,6 +228,23 @@ export function convertCatalogWorkoutToWorkoutPlan(workout: CatalogWorkout): Wor
     createdAt: new Date().toISOString(),
     sessions: [session]
   };
+}
+
+/**
+ * Altera nível de acesso (Gratuito / Premium)
+ */
+export function updateWorkoutAccessLevel(workoutId: string, accessLevel: 'free' | 'premium'): CatalogWorkout | null {
+  const workouts = getAllCatalogWorkouts();
+  const index = workouts.findIndex(w => w.id === workoutId);
+  if (index === -1) return null;
+
+  workouts[index] = {
+    ...workouts[index],
+    accessLevel,
+    updatedAt: new Date().toISOString()
+  };
+  saveAllCatalogWorkouts(workouts);
+  return workouts[index];
 }
 
 /**
@@ -286,6 +341,24 @@ export function getWorkoutPublicationMetrics() {
   const published = workouts.filter(w => w.status === 'publicado').length;
   const review = workouts.filter(w => w.status === 'revisao').length;
   const draft = workouts.filter(w => w.status === 'rascunho').length;
+  const free = workouts.filter(w => w.accessLevel === 'free').length;
+  const premium = workouts.filter(w => w.accessLevel === 'premium').length;
 
-  return { total, published, review, draft };
+  return { total, published, review, draft, free, premium };
+}
+
+/**
+ * Restaura o catálogo para o estado padrão de fábrica (limpa caches do localStorage)
+ * Não quebra o aplicativo: reverte instantaneamente para INITIAL_CATALOG_WORKOUTS,
+ * CENTRAL_EXERCISES e INITIAL_WORKOUT_EXERCISES.
+ */
+export function resetCatalogToDefaults(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(WORKOUTS_STORAGE_KEY);
+    localStorage.removeItem(EXERCISES_STORAGE_KEY);
+    localStorage.removeItem(RELATIONS_STORAGE_KEY);
+  } catch (e) {
+    console.error('Erro ao restaurar catálogo aos padrões:', e);
+  }
 }
