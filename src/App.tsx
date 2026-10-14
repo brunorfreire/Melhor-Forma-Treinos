@@ -12,6 +12,7 @@ import { MuscleWikiModal } from './components/MuscleWikiModal';
 import { RestTimer } from './components/RestTimer';
 import { StudentHistoryModal } from './components/StudentHistoryModal';
 import { saveStudentWorkout } from './utils/studentStorage';
+import { PWAInstallButton } from './components/PWAInstallButton';
 import { 
   Play, 
   Sparkles, 
@@ -175,10 +176,13 @@ export default function App() {
               </div>
             </div>
 
-            {/* Micro Tagline on ultra-small mobile screens */}
-            <span className="text-[10px] text-emerald-400 font-bold xs:hidden bg-emerald-950/50 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-              Longevidade
-            </span>
+            {/* Right side of top row: PWA Install Button & micro badge */}
+            <div className="flex items-center gap-2">
+              <PWAInstallButton />
+              <span className="text-[10px] text-emerald-400 font-bold xs:hidden bg-emerald-950/50 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+                Longevidade
+              </span>
+            </div>
           </div>
 
           {/* Navigation Tabs: Grid 4 columns on mobile, Flex row on sm+ (Touch targets >= 44x44px) */}
