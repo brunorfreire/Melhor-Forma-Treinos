@@ -7,7 +7,7 @@ interface ExerciseThumbnailProps {
   exercise: Exercise;
   onClick?: () => void;
   className?: string;
-  aspectRatio?: '16:9' | '4:3';
+  aspectRatio?: '16:9' | '4:3' | '1:1';
   showPlayBadge?: boolean;
 }
 
@@ -25,7 +25,7 @@ export const ExerciseThumbnail: React.FC<ExerciseThumbnailProps> = ({
   const thumbnailUrl = !imageError ? media.thumbnailUrl : null;
   const isClickable = isValidated && !!onClick;
 
-  const aspectClass = aspectRatio === '4:3' ? 'aspect-[4/3]' : 'aspect-video';
+  const aspectClass = aspectRatio === '4:3' ? 'aspect-[4/3]' : aspectRatio === '1:1' ? 'aspect-square' : 'aspect-video';
 
   // Quando não há miniatura ou ocorreu erro ao carregar a imagem
   if (!thumbnailUrl) {

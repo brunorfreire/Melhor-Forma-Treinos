@@ -294,28 +294,56 @@ export const Collection40PlusView: React.FC<Collection40PlusViewProps> = ({
                     key={session.id}
                     className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-3xl p-4 sm:p-5 shadow-lg space-y-4 transition"
                   >
-                    {/* Header da Sessão */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-sm shrink-0">
-                          0{sIdx + 1}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    {/* Header da Sessão com Capa Vertical 3:4 e Informações */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3.5">
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        {/* Capa Vertical 3:4 com Badges */}
+                        <div className="relative w-20 xs:w-24 sm:w-28 aspect-[3/4] rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shrink-0 shadow-md group cursor-pointer"
+                          onClick={() => {
+                            const plan = convertSessionToWorkoutPlan(session);
+                            onSelectSessionToTrain(plan);
+                          }}
+                        >
+                          <img
+                            src={session.coverImage}
+                            alt={session.title}
+                            className="w-full h-full object-cover object-[center_25%] group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                          <div className="absolute top-1.5 left-1.5">
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 shadow">
+                              0{sIdx + 1}
+                            </span>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                            <div className="w-8 h-8 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shadow-lg">
+                              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                            </div>
+                          </div>
+                          <div className="absolute bottom-1.5 left-1.5 right-1.5">
+                            <span className="text-[8px] font-bold text-emerald-300 uppercase block truncate">
                               {session.duration}
                             </span>
-                            <span className={`text-[10px] font-bold uppercase ${pillar?.color || 'text-slate-400'}`}>
+                          </div>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              {session.duration}
+                            </span>
+                            <span className={`text-[9px] font-bold uppercase ${pillar?.color || 'text-slate-400'}`}>
                               Pilar {pillar?.name}
                             </span>
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[9px] text-slate-400">
                               • {session.focus}
                             </span>
                           </div>
-                          <h5 className="text-base sm:text-lg font-bold text-white mt-1">
+                          <h5 className="text-base sm:text-lg font-black text-white mt-1 leading-snug">
                             {session.title}
                           </h5>
-                          <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                          <p className="text-xs text-slate-300 mt-1 leading-relaxed line-clamp-2">
                             {session.objective}
                           </p>
                         </div>

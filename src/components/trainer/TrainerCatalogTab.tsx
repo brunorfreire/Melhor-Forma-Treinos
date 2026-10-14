@@ -408,18 +408,18 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
                   : 'border-slate-800/60 opacity-85'
               }`}
             >
-              {/* Top Banner Image with Badges */}
-              <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
+              {/* Top Banner Image with Badges (Modern mobile-first proportion) */}
+              <div className="relative aspect-[4/3] sm:aspect-[16/10] w-full bg-slate-950 overflow-hidden">
                 <img
                   src={workout.coverImage}
                   alt={workout.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-[center_25%]"
                   onError={(e) => {
                     // Fallback para imagem segura caso falhe
                     (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=600&q=80';
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
 
                 {/* Status & Access Badges */}
                 <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">

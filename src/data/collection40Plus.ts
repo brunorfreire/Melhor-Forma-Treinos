@@ -33,6 +33,7 @@ export interface CollectionWorkoutSession {
   targetAudience: string;
   coverImage: string;
   exercises: Exercise[];
+  accessLevel?: 'free' | 'premium';
 }
 
 export const PILLARS_40_PLUS: CollectionPillar[] = [
