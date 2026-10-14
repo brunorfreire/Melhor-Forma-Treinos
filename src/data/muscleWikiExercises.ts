@@ -1,12 +1,17 @@
 export interface CatalogExercise {
+  id?: string;
   name: string;
   muscleGroup: string;
   youtubeId?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
   muscleWikiUrl?: string;
   defaultSets: string;
   defaultReps: string;
   defaultRest: string;
   tip?: string;
+  instructions?: string;
+  cautions?: string;
 }
 
 export const MUSCLE_GROUPS = [

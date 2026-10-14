@@ -67,12 +67,12 @@ export const RestTimer: React.FC = () => {
   const progressPercent = totalSeconds > 0 ? ((totalSeconds - remainingSeconds) / totalSeconds) * 100 : 0;
 
   return (
-    <div className="fixed bottom-3 right-3 left-3 sm:left-auto sm:right-6 sm:w-80 z-40">
-      <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl shadow-xl shadow-black/50 overflow-hidden transition-all">
+    <div className="fixed bottom-20 right-3 left-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-80 z-30 transition-all duration-300">
+      <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl shadow-2xl shadow-black/70 overflow-hidden transition-all">
         {/* Top Header Bar */}
         <div 
           onClick={() => setIsMinimized(!isMinimized)}
-          className="px-4 py-2.5 bg-slate-950/70 border-b border-slate-800/80 flex items-center justify-between cursor-pointer select-none"
+          className="px-3.5 py-2.5 bg-slate-950/80 border-b border-slate-800/80 flex items-center justify-between cursor-pointer select-none"
         >
           <div className="flex items-center gap-2">
             <Clock className={`w-4 h-4 ${isActive ? 'text-emerald-400 animate-spin' : 'text-slate-400'}`} />
@@ -111,21 +111,23 @@ export const RestTimer: React.FC = () => {
             <span className="text-xl font-mono font-black text-white pl-2">
               {formatTime(remainingSeconds)}
             </span>
-            <div className="flex gap-1.5">
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleTogglePlay}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ${
-                  isActive ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white'
+                className={`min-h-[44px] min-w-[44px] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md ${
+                  isActive ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
                 }`}
               >
-                {isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                {isActive ? 'Pausar' : 'Iniciar'}
+                {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+                <span>{isActive ? 'Pausar' : 'Iniciar'}</span>
               </button>
               <button
                 onClick={handleReset}
-                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
+                className="min-h-[44px] min-w-[44px] p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl flex items-center justify-center transition active:scale-95"
+                title="Reiniciar cronômetro"
+                aria-label="Reiniciar cronômetro"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -140,22 +142,23 @@ export const RestTimer: React.FC = () => {
                   {formatTime(remainingSeconds)}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={handleTogglePlay}
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white transition active:scale-95 shadow-md ${
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white transition active:scale-95 shadow-md ${
                     isActive 
                       ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-950' 
                       : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950'
                   }`}
                   aria-label={isActive ? 'Pausar' : 'Iniciar'}
                 >
-                  {isActive ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  {isActive ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5 fill-current" />}
                 </button>
                 <button
                   onClick={handleReset}
-                  className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition"
+                  className="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition active:scale-95"
                   title="Reiniciar"
+                  aria-label="Reiniciar"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -21,12 +21,29 @@ import {
   X,
   PlusCircle,
   AlertCircle,
-  Filter
+  Filter,
+  Users,
+  Play,
+  Video,
+  VideoOff,
+  Image as ImageIcon,
+  ShieldAlert,
+  LogOut,
+  Film,
+  ShieldCheck
 } from 'lucide-react';
 import { WorkoutPlan, WorkoutSession, Exercise } from '../types';
 import { MUSCLEWIKI_CATALOG, MUSCLE_GROUPS, CatalogExercise } from '../data/muscleWikiExercises';
 import { PRESET_TEMPLATES } from '../data/defaultPlans';
 import { resolveExerciseYouTubeId } from '../utils/youtube';
+import { getSavedStudents, saveStudentWorkout } from '../utils/studentStorage';
+import { ExerciseThumbnail } from './ExerciseThumbnail';
+import { resolveExerciseMedia } from '../utils/exerciseMedia';
+import { TrainerAuthGate, isTrainerAuthenticated, logoutTrainer } from './trainer/TrainerAuthGate';
+import { TrainerCatalogTab } from './trainer/TrainerCatalogTab';
+import { TrainerExercisesTab } from './trainer/TrainerExercisesTab';
+import { TrainerVideoValidatorTab } from './trainer/TrainerVideoValidatorTab';
+import { TrainerMuscleWikiTab } from './trainer/TrainerMuscleWikiTab';
 
 const normalizeText = (text: string): string => {
   return text
@@ -43,6 +60,8 @@ interface TrainerEditorProps {
   onOpenShareModal: () => void;
   onOpenHostingerGuide: () => void;
   onPreviewExercise: (ex: Exercise) => void;
+  onOpenStudentHistory: () => void;
+  onBackToCatalog?: () => void;
 }
 
 export const TrainerEditor: React.FC<TrainerEditorProps> = ({
@@ -51,9 +70,38 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
   onViewAsStudent,
   onOpenShareModal,
   onOpenHostingerGuide,
-  onPreviewExercise
+  onPreviewExercise,
+  onOpenStudentHistory,
+  onBackToCatalog
 }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => isTrainerAuthenticated());
+  const [activeAdminTab, setActiveAdminTab] = useState<'catalog' | 'exercises' | 'video_validator' | 'musclewiki' | 'student_sheet'>('catalog');
   const [activeSessionIndex, setActiveSessionIndex] = useState(0);
+  const [savedCount, setSavedCount] = useState(() => getSavedStudents().length);
+  const [justSavedNotice, setJustSavedNotice] = useState(false);
+
+  useEffect(() => {
+    setSavedCount(getSavedStudents().length);
+  }, [plan]);
+
+  const handleManualSaveStudent = () => {
+    if (!plan.studentName.trim()) {
+      alert('Digite o nome do aluno antes de salvar no histórico.');
+      return;
+    }
+    const updatedList = saveStudentWorkout(plan);
+    setSavedCount(updatedList.length);
+    setJustSavedNotice(true);
+    setTimeout(() => setJustSavedNotice(false), 2500);
+  };
+
+  const handleGenerateWhatsApp = () => {
+    if (plan.studentName && plan.studentName.trim()) {
+      saveStudentWorkout(plan);
+      setSavedCount(getSavedStudents().length);
+    }
+    onOpenShareModal();
+  };
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [selectedMuscleFilter, setSelectedMuscleFilter] = useState<string>('Peito');
   const [searchCatalogTerm, setSearchCatalogTerm] = useState('');
@@ -61,6 +109,7 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [justAddedName, setJustAddedName] = useState<string | null>(null);
   const [sessionExerciseFilter, setSessionExerciseFilter] = useState('');
+  const [expandedMediaEditorId, setExpandedMediaEditorId] = useState<string | null>(null);
 
   // Custom exercise temporary form
   const [customExercise, setCustomExercise] = useState<Partial<Exercise>>({
@@ -71,7 +120,11 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
     rest: '60s',
     weight: '',
     notes: '',
-    youtubeId: ''
+    youtubeId: '',
+    thumbnailUrl: '',
+    instructions: '',
+    cautions: '',
+    hasNoVideo: false
   });
 
   const activeSession = plan.sessions[activeSessionIndex] || plan.sessions[0];
@@ -168,7 +221,10 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
       rest: item.defaultRest,
       weight: '',
       notes: item.tip || '',
-      youtubeId: resolvedVideo
+      instructions: item.instructions || item.tip || '',
+      cautions: item.cautions || '',
+      youtubeId: resolvedVideo,
+      thumbnailUrl: item.thumbnailUrl || ''
     };
 
     updateActiveSession({
@@ -206,7 +262,11 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
       rest: customExercise.rest || '60s',
       weight: customExercise.weight || '',
       notes: customExercise.notes || '',
-      youtubeId: resolvedVideo
+      instructions: customExercise.instructions || '',
+      cautions: customExercise.cautions || '',
+      youtubeId: customExercise.hasNoVideo ? undefined : resolvedVideo,
+      thumbnailUrl: customExercise.thumbnailUrl || '',
+      hasNoVideo: customExercise.hasNoVideo
     };
 
     updateActiveSession({
@@ -227,7 +287,11 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
       rest: '60s',
       weight: '',
       notes: '',
-      youtubeId: ''
+      youtubeId: '',
+      thumbnailUrl: '',
+      instructions: '',
+      cautions: '',
+      hasNoVideo: false
     });
     setShowCustomAddForm(false);
   };
@@ -290,50 +354,208 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
     });
   }, [searchCatalogTerm, selectedMuscleFilter]);
 
+  if (!isAuthenticated) {
+    return (
+      <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-start pb-20">
+        <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm">
+              <Dumbbell className="w-4 h-4 text-emerald-400" />
+            </div>
+            <span className="text-sm font-bold text-white">Painel do Treinador | Acesso Restrito</span>
+          </div>
+          {onBackToCatalog && (
+            <button
+              onClick={onBackToCatalog}
+              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition"
+            >
+              ← Ir ao Catálogo Play
+            </button>
+          )}
+        </header>
+        <TrainerAuthGate onAuthenticated={() => setIsAuthenticated(true)} />
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-slate-950 text-slate-100 flex flex-col pb-36">
+    <div className="w-full max-w-6xl mx-auto min-h-screen bg-slate-950 text-slate-100 flex flex-col pb-36 px-2 sm:px-4">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm">
+      <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 shadow-lg shadow-black/40">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
             <Dumbbell className="w-4 h-4 text-emerald-400" />
           </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight text-white leading-tight">
-              Melhor Forma Treino
+          <div className="min-w-0">
+            <h1 className="text-xs sm:text-sm font-bold tracking-tight text-white leading-tight truncate">
+              Painel do Treinador
             </h1>
-            <span className="text-[10px] text-slate-400 font-medium">
-              V1 Lite • Painel do Treinador
+            <span className="text-[10px] text-emerald-400 font-medium block truncate">
+              Administração de Catálogo & Mídias
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onBackToCatalog && (
+            <button
+              type="button"
+              onClick={onBackToCatalog}
+              className="min-h-[40px] px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-emerald-300 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition"
+              title="Ir para o Catálogo de Treinos / Streaming"
+            >
+              <span>Catálogo Play</span>
+            </button>
+          )}
+
           <button
+            type="button"
+            onClick={onOpenStudentHistory}
+            className="min-h-[40px] px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition active:scale-95 shadow-sm"
+            title="Carteira & Histórico de Alunos"
+          >
+            <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="hidden sm:inline">Alunos</span>
+            <span className="text-[10px] bg-emerald-500/25 px-1.5 py-0.5 rounded-full font-mono font-bold text-emerald-300">
+              {savedCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={onOpenHostingerGuide}
-            className="p-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-xl transition text-xs flex items-center gap-1"
-            title="Guia Hostinger"
+            className="min-h-[40px] min-w-[40px] p-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-xl transition text-xs flex items-center justify-center"
+            title="Guia de Hospedagem Hostinger"
+            aria-label="Guia Hostinger"
           >
             <Server className="w-4 h-4" />
           </button>
+
           <button
+            type="button"
             onClick={onViewAsStudent}
-            className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+            className="min-h-[40px] px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition"
           >
-            <Eye className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Ver Aluno</span>
+            <Eye className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="hidden xs:inline">Ver Aluno</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              logoutTrainer();
+              setIsAuthenticated(false);
+            }}
+            className="min-h-[40px] min-w-[40px] p-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-xl transition text-xs flex items-center justify-center"
+            title="Sair do modo administrador"
+            aria-label="Sair do modo administrador"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      {/* Main Form Content */}
-      <div className="p-4 space-y-4">
-        {/* Quick Presets Banner */}
-        <div className="flex items-center justify-between bg-slate-900/60 border border-slate-800/80 p-2.5 rounded-xl text-xs">
-          <div className="flex items-center gap-1.5 text-slate-400">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Fichas e Modelos:</span>
-          </div>
+      {/* Admin Tab Navigation Bar */}
+      <div className="py-2.5 sticky top-[57px] z-20 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          <button
+            onClick={() => setActiveAdminTab('catalog')}
+            className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+              activeAdminTab === 'catalog'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <Film className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Catálogo (72 Treinos)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab('exercises')}
+            className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+              activeAdminTab === 'exercises'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <Dumbbell className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Biblioteca EXERCISES</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab('video_validator')}
+            className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+              activeAdminTab === 'video_validator'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span>Validador de Vídeos</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab('musclewiki')}
+            className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+              activeAdminTab === 'musclewiki'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <Server className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+            <span>MuscleWiki & Proxy</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab('student_sheet')}
+            className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+              activeAdminTab === 'student_sheet'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Ficha do Aluno</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Contents */}
+      <div className="pt-4">
+        {activeAdminTab === 'catalog' && (
+          <TrainerCatalogTab
+            onStartTestWorkout={(testPlan) => {
+              onChangePlan(testPlan);
+              onViewAsStudent();
+            }}
+            onPreviewExerciseVideo={onPreviewExercise}
+          />
+        )}
+
+        {activeAdminTab === 'exercises' && (
+          <TrainerExercisesTab
+            onPreviewExerciseVideo={onPreviewExercise}
+          />
+        )}
+
+        {activeAdminTab === 'video_validator' && (
+          <TrainerVideoValidatorTab
+            onPreviewExerciseVideo={onPreviewExercise}
+          />
+        )}
+
+        {activeAdminTab === 'musclewiki' && (
+          <TrainerMuscleWikiTab />
+        )}
+
+        {activeAdminTab === 'student_sheet' && (
+          <div className="max-w-md mx-auto space-y-4">
+            {/* Quick Presets Banner */}
+            <div className="flex items-center justify-between bg-slate-900/60 border border-slate-800/80 p-2.5 rounded-xl text-xs">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Fichas e Modelos:</span>
+              </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -379,7 +601,28 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
             <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
               Dados do Aluno & Treino
             </h2>
-            <span className="text-[10px] text-slate-500 font-mono">Sem banco de dados</span>
+            <button
+              type="button"
+              onClick={handleManualSaveStudent}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition active:scale-95 border ${
+                justSavedNotice
+                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                  : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
+              }`}
+              title="Salvar ou atualizar a ficha deste aluno no seu histórico local"
+            >
+              {justSavedNotice ? (
+                <>
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span>Salvo!</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3 h-3 text-emerald-400" />
+                  <span>Salvar Aluno</span>
+                </>
+              )}
+            </button>
           </div>
 
           <div className="space-y-2.5 text-xs">
@@ -777,21 +1020,79 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
                     type="text"
                     value={customExercise.notes || ''}
                     onChange={(e) => setCustomExercise({ ...customExercise, notes: e.target.value })}
-                    placeholder="Observações técnicas (opcional)"
+                    placeholder="Recado para o aluno (ex: cadência 2-0-2)"
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
                   />
 
-                  <input
-                    type="text"
-                    value={customExercise.youtubeId || ''}
-                    onChange={(e) => setCustomExercise({ ...customExercise, youtubeId: e.target.value })}
-                    placeholder="Link ou ID do YouTube (opcional: se vazio, usa vídeo padrão)"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-300 focus:outline-none font-mono"
-                  />
+                  {/* Campos de Mídia, Vídeo e Miniatura */}
+                  <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                        <Video className="w-3.5 h-3.5" /> Mídia & Demonstração Visual:
+                      </span>
+                      <label className="flex items-center gap-1.5 text-[10px] text-slate-400 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!customExercise.hasNoVideo}
+                          onChange={(e) => setCustomExercise({ ...customExercise, hasNoVideo: e.target.checked })}
+                          className="rounded border-slate-700 text-emerald-500 focus:ring-0"
+                        />
+                        <span>Sem vídeo</span>
+                      </label>
+                    </div>
+
+                    {!customExercise.hasNoVideo && (
+                      <>
+                        <div>
+                          <label className="text-[9px] text-slate-400 block mb-0.5">Link ou ID do Vídeo (YouTube):</label>
+                          <input
+                            type="text"
+                            value={customExercise.youtubeId || ''}
+                            onChange={(e) => setCustomExercise({ ...customExercise, youtubeId: e.target.value })}
+                            placeholder="Ex: https://youtube.com/watch?v=... ou ID (11 dígitos)"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-200 focus:outline-none font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[9px] text-slate-400 block mb-0.5">URL da Miniatura Personalizada (opcional):</label>
+                          <input
+                            type="url"
+                            value={customExercise.thumbnailUrl || ''}
+                            onChange={(e) => setCustomExercise({ ...customExercise, thumbnailUrl: e.target.value })}
+                            placeholder="Deixe vazio para usar a capa oficial do vídeo automaticamente"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-200 focus:outline-none font-mono"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label className="text-[9px] text-slate-400 block mb-0.5">Orientações Técnicas Resumidas:</label>
+                      <input
+                        type="text"
+                        value={customExercise.instructions || ''}
+                        onChange={(e) => setCustomExercise({ ...customExercise, instructions: e.target.value })}
+                        placeholder="Ex: Aduza as escápulas e empurre com os cotovelos alinhados"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-200 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[9px] text-slate-400 block mb-0.5">Cuidados de Execução:</label>
+                      <input
+                        type="text"
+                        value={customExercise.cautions || ''}
+                        onChange={(e) => setCustomExercise({ ...customExercise, cautions: e.target.value })}
+                        placeholder="Ex: Não afaste os cotovelos em 90° para proteger o ombro"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-200 focus:outline-none"
+                      />
+                    </div>
+                  </div>
 
                   <button
                     type="submit"
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition"
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow-sm"
                   >
                     Adicionar à Lista
                   </button>
@@ -839,158 +1140,319 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
                       const f = normalizeText(sessionExerciseFilter);
                       return normalizeText(ex.name).includes(f) || normalizeText(ex.muscleGroup).includes(f);
                     })
-                    .map(({ ex, originalIdx }) => (
-                    <div
-                      key={ex.id}
-                      className="bg-slate-950/90 border border-slate-800/90 rounded-xl p-3 space-y-2.5"
-                    >
-                      {/* Title row */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-mono font-bold bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">
-                            #{originalIdx + 1}
-                          </span>
-                          <span className="text-[10px] font-semibold uppercase text-emerald-400">
-                            {ex.muscleGroup}
-                          </span>
-                        </div>
+                    .map(({ ex, originalIdx }) => {
+                      const isMediaOpen = expandedMediaEditorId === ex.id;
+                      const media = resolveExerciseMedia(ex);
 
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => moveExercise(originalIdx, 'up')}
-                            disabled={originalIdx === 0}
-                            className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded"
-                            title="Mover para cima"
-                          >
-                            <ChevronUp className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => moveExercise(originalIdx, 'down')}
-                            disabled={originalIdx === activeSession.exercises.length - 1}
-                            className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded"
-                            title="Mover para baixo"
-                          >
-                            <ChevronDown className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => removeExercise(ex.id)}
-                            className="p-1 text-rose-400 hover:text-rose-300 rounded ml-1"
-                            title="Remover exercício"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
+                      return (
+                        <div
+                          key={ex.id}
+                          className="bg-slate-950/90 border border-slate-800/90 rounded-2xl p-3.5 space-y-3 hover:border-slate-700 transition"
+                        >
+                          {/* Top Row: Miniatura à esquerda + Título e Ações à direita */}
+                          <div className="flex items-start gap-3">
+                            {/* Miniatura 16:9 */}
+                            <div className="w-20 xs:w-24 sm:w-28 shrink-0">
+                              <ExerciseThumbnail
+                                exercise={ex}
+                                onClick={media.hasVideo ? () => onPreviewExercise(ex) : undefined}
+                                aspectRatio="16:9"
+                                showPlayBadge={true}
+                              />
+                            </div>
 
-                      {/* Name input */}
-                      <input
-                        type="text"
-                        value={ex.name}
-                        onChange={(e) => updateExerciseField(ex.id, 'name', e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-800/80 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none"
-                      />
+                            {/* Informações centrais e Ações */}
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-[10px] font-mono font-bold bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded shrink-0">
+                                    #{originalIdx + 1}
+                                  </span>
+                                  <span className="text-[10px] font-bold uppercase text-emerald-400 truncate">
+                                    {ex.muscleGroup}
+                                  </span>
+                                </div>
 
-                      {/* Sets / Reps / Rest / Weight */}
-                      <div className="grid grid-cols-4 gap-1.5 text-center">
-                        <div>
-                          <label className="text-[9px] text-slate-400 block mb-0.5">Séries</label>
-                          <input
-                            type="text"
-                            value={ex.sets}
-                            onChange={(e) => updateExerciseField(ex.id, 'sets', e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] text-slate-400 block mb-0.5">Reps</label>
-                          <input
-                            type="text"
-                            value={ex.reps}
-                            onChange={(e) => updateExerciseField(ex.id, 'reps', e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] text-slate-400 block mb-0.5">Descanso</label>
-                          <input
-                            type="text"
-                            value={ex.rest}
-                            onChange={(e) => updateExerciseField(ex.id, 'rest', e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-xs text-emerald-400 text-center focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] text-slate-400 block mb-0.5">Carga</label>
-                          <input
-                            type="text"
-                            value={ex.weight || ''}
-                            onChange={(e) => updateExerciseField(ex.id, 'weight', e.target.value)}
-                            placeholder="kg"
-                            className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-xs text-amber-300 text-center focus:outline-none"
-                          />
-                        </div>
-                      </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveExercise(originalIdx, 'up')}
+                                    disabled={originalIdx === 0}
+                                    className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-slate-800"
+                                    title="Mover para cima"
+                                  >
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveExercise(originalIdx, 'down')}
+                                    disabled={originalIdx === activeSession.exercises.length - 1}
+                                    className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-slate-800"
+                                    title="Mover para baixo"
+                                  >
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeExercise(ex.id)}
+                                    className="p-1 text-rose-400 hover:text-rose-300 rounded hover:bg-rose-500/10 ml-0.5"
+                                    title="Remover exercício"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
 
-                      {/* Notes / YouTube In-App Video Test */}
-                      <div className="space-y-1.5 pt-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={ex.notes || ''}
-                            onChange={(e) => updateExerciseField(ex.id, 'notes', e.target.value)}
-                            placeholder="Observação (ex: escápulas travadas)"
-                            className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => onPreviewExercise(ex)}
-                            className="px-2 py-1 bg-red-600/15 hover:bg-red-600/25 active:scale-95 text-red-400 rounded-lg border border-red-500/30 text-[11px] flex items-center gap-1 font-semibold shrink-0"
-                            title="Testar vídeo YouTube no app"
-                          >
-                            <Youtube className="w-3.5 h-3.5 fill-current text-red-500" />
-                            <span>Vídeo</span>
-                          </button>
+                              {/* Input do Nome do Exercício */}
+                              <input
+                                type="text"
+                                value={ex.name}
+                                onChange={(e) => updateExerciseField(ex.id, 'name', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none"
+                                placeholder="Nome do exercício"
+                              />
+
+                              {/* Linha com Botões: "Ver execução" e "Mídia & Vídeo" */}
+                              <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                                {media.hasVideo ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onPreviewExercise(ex)}
+                                    className="py-1 px-2.5 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 rounded-lg text-[10px] font-bold flex items-center gap-1 transition active:scale-95"
+                                    title="Testar vídeo demonstrativo no app"
+                                  >
+                                    <Play className="w-3 h-3 fill-current text-emerald-400" />
+                                    <span>Ver execução</span>
+                                  </button>
+                                ) : (
+                                  <span className="py-1 px-2 bg-slate-900 border border-slate-800 text-slate-500 rounded-lg text-[10px] font-medium flex items-center gap-1">
+                                    <VideoOff className="w-3 h-3 text-slate-500" />
+                                    <span>Sem vídeo</span>
+                                  </span>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedMediaEditorId(isMediaOpen ? null : ex.id)}
+                                  className={`py-1 px-2.5 rounded-lg text-[10px] font-semibold border flex items-center gap-1 transition ${
+                                    isMediaOpen
+                                      ? 'bg-blue-600/25 border-blue-500/40 text-blue-300'
+                                      : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-400 hover:text-slate-200'
+                                  }`}
+                                  title="Editar link do vídeo, miniatura e orientações técnicas"
+                                >
+                                  <Video className="w-3 h-3" />
+                                  <span>{isMediaOpen ? 'Fechar Mídia' : 'Alterar Mídia'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sets / Reps / Rest / Weight */}
+                          <div className="grid grid-cols-4 gap-1.5 text-center">
+                            <div>
+                              <label className="text-[9px] text-slate-400 block mb-0.5">Séries</label>
+                              <input
+                                type="text"
+                                value={ex.sets}
+                                onChange={(e) => updateExerciseField(ex.id, 'sets', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[9px] text-slate-400 block mb-0.5">Reps</label>
+                              <input
+                                type="text"
+                                value={ex.reps}
+                                onChange={(e) => updateExerciseField(ex.id, 'reps', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-xs text-white text-center focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[9px] text-slate-400 block mb-0.5">Descanso</label>
+                              <input
+                                type="text"
+                                value={ex.rest}
+                                onChange={(e) => updateExerciseField(ex.id, 'rest', e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-xs text-emerald-400 text-center focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[9px] text-slate-400 block mb-0.5">Carga</label>
+                              <input
+                                type="text"
+                                value={ex.weight || ''}
+                                onChange={(e) => updateExerciseField(ex.id, 'weight', e.target.value)}
+                                placeholder="kg"
+                                className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-xs text-amber-300 text-center focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Observação rápida do treinador */}
+                          <div>
+                            <input
+                              type="text"
+                              value={ex.notes || ''}
+                              onChange={(e) => updateExerciseField(ex.id, 'notes', e.target.value)}
+                              placeholder="Observação para o aluno (ex: escápulas travadas)"
+                              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 focus:outline-none"
+                            />
+                          </div>
+
+                          {/* Painel Expansível de Mídia & Demonstração (Requisito 10 & 11) */}
+                          {isMediaOpen && (
+                            <div className="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-3 space-y-2.5 animate-fadeIn">
+                              <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+                                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                                  <Video className="w-3.5 h-3.5" />
+                                  Personalizar Mídia & Demonstração do Exercício
+                                </span>
+                                <label className="flex items-center gap-1.5 text-[10px] text-slate-400 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!ex.hasNoVideo}
+                                    onChange={(e) => updateExerciseField(ex.id, 'hasNoVideo', e.target.checked)}
+                                    className="rounded border-slate-700 text-emerald-500 focus:ring-0"
+                                  />
+                                  <span>Sem vídeo demonstrativo</span>
+                                </label>
+                              </div>
+
+                              {!ex.hasNoVideo ? (
+                                <div className="space-y-2">
+                                  <div>
+                                    <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
+                                      <span>Link ou ID do Vídeo (YouTube):</span>
+                                      {media.videoId && (
+                                        <span className="font-mono text-emerald-400">ID Ativo: {media.videoId}</span>
+                                      )}
+                                    </div>
+                                    <input
+                                      type="text"
+                                      value={ex.youtubeId || ex.videoUrl || ''}
+                                      onChange={(e) => {
+                                        updateExerciseField(ex.id, 'youtubeId', e.target.value);
+                                        updateExerciseField(ex.id, 'videoUrl', e.target.value);
+                                      }}
+                                      placeholder="Cole o link do YouTube (ex: https://youtube.com/watch?v=... ou ID)"
+                                      className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="text-[10px] text-slate-400 block mb-0.5">
+                                      URL da Miniatura Personalizada:
+                                    </label>
+                                    <div className="flex items-center gap-1.5">
+                                      <input
+                                        type="url"
+                                        value={ex.thumbnailUrl || ''}
+                                        onChange={(e) => updateExerciseField(ex.id, 'thumbnailUrl', e.target.value)}
+                                        placeholder="Deixe vazio para usar a miniatura oficial do vídeo automaticamente"
+                                        className="flex-1 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none"
+                                      />
+                                      {ex.thumbnailUrl && (
+                                        <button
+                                          type="button"
+                                          onClick={() => updateExerciseField(ex.id, 'thumbnailUrl', '')}
+                                          className="text-[10px] text-slate-400 hover:text-white px-2 py-1.5 bg-slate-800 rounded-lg"
+                                        >
+                                          Resetar
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-2.5 bg-slate-950/80 rounded-lg text-[11px] text-slate-400 flex items-center gap-2 border border-slate-800">
+                                  <VideoOff className="w-4 h-4 text-slate-500 shrink-0" />
+                                  <span>Este exercício será exibido sem opção de vídeo, apresentando a imagem substituta padronizada.</span>
+                                </div>
+                              )}
+
+                              <div>
+                                <label className="text-[10px] text-slate-400 block mb-0.5">
+                                  Orientações Técnicas Resumidas:
+                                </label>
+                                <textarea
+                                  value={ex.instructions || ''}
+                                  onChange={(e) => updateExerciseField(ex.id, 'instructions', e.target.value)}
+                                  placeholder="Ex: Escápulas presas no banco, desça até 90 graus controlando a carga..."
+                                  rows={2}
+                                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-lg p-2 text-xs text-slate-200 focus:outline-none resize-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[10px] text-slate-400 block mb-0.5">
+                                  Cuidados de Execução & Postura:
+                                </label>
+                                <input
+                                  type="text"
+                                  value={ex.cautions || ''}
+                                  onChange={(e) => updateExerciseField(ex.id, 'cautions', e.target.value)}
+                                  placeholder="Ex: Não afaste os cotovelos em excesso para proteger o ombro..."
+                                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none"
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between pt-1">
+                                {media.hasVideo ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onPreviewExercise(ex)}
+                                    className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold"
+                                  >
+                                    <Play className="w-3.5 h-3.5 fill-current" />
+                                    Testar Vídeo Atual
+                                  </button>
+                                ) : <div />}
+
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedMediaEditorId(null)}
+                                  className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
+                                >
+                                  Concluído
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1.5 bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800/80">
-                          <span className="text-[10px] text-slate-400 font-mono shrink-0">YouTube:</span>
-                          <input
-                            type="text"
-                            value={ex.youtubeId || ''}
-                            onChange={(e) => updateExerciseField(ex.id, 'youtubeId', e.target.value)}
-                            placeholder="Link ou ID (se vazio, usa padrão automático)"
-                            className="flex-1 bg-transparent text-[10px] text-slate-300 font-mono focus:outline-none placeholder:text-slate-600"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))
+                      );
+                    })
                 )}
               </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* Floating Bottom Bar with Primary Action: "Gerar Link WhatsApp" */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-3">
-        <div className="max-w-md mx-auto flex items-center gap-2">
-          <button
-            onClick={onViewAsStudent}
-            className="py-3 px-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-98"
-          >
-            <Eye className="w-4 h-4 text-emerald-400" />
-            <span className="hidden xs:inline">Testar</span> Aluno
-          </button>
-
-          <button
-            onClick={onOpenShareModal}
-            className="flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
-          >
-            <Share2 className="w-4 h-4" />
-            Gerar Link WhatsApp
-          </button>
-        </div>
+      )}
       </div>
+
+      {/* Floating Bottom Bar with Primary Action: "Gerar Link WhatsApp" (Apenas na Ficha do Aluno) */}
+      {activeAdminTab === 'student_sheet' && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-3">
+          <div className="max-w-md mx-auto flex items-center gap-2">
+            <button
+              onClick={onViewAsStudent}
+              className="py-3 px-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-98"
+            >
+              <Eye className="w-4 h-4 text-emerald-400" />
+              <span className="hidden xs:inline">Testar</span> Aluno
+            </button>
+
+            <button
+              onClick={handleGenerateWhatsApp}
+              className="flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
+            >
+              <Share2 className="w-4 h-4" />
+              Gerar Link WhatsApp
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* MuscleWiki Catalog Picker Modal */}
       {showCatalogModal && (
@@ -1107,29 +1569,50 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
                   </button>
                 </div>
               ) : (
-                filteredCatalog.map((item, i) => (
-                  <div
-                    key={i}
-                    className="p-3 bg-slate-950/70 hover:bg-slate-800/70 border border-slate-800/70 hover:border-emerald-500/50 rounded-xl transition flex items-center justify-between gap-2"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-semibold text-emerald-400 uppercase">
-                          {item.muscleGroup}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          • {item.defaultSets}x{item.defaultReps} ({item.defaultRest})
-                        </span>
+                filteredCatalog.map((item, i) => {
+                  const previewObj: Exercise = {
+                    id: `cat-${i}`,
+                    name: item.name,
+                    muscleGroup: item.muscleGroup,
+                    sets: item.defaultSets,
+                    reps: item.defaultReps,
+                    rest: item.defaultRest,
+                    youtubeId: item.youtubeId,
+                    thumbnailUrl: item.thumbnailUrl
+                  };
+
+                  return (
+                    <div
+                      key={i}
+                      className="p-2.5 sm:p-3 bg-slate-950/70 hover:bg-slate-800/70 border border-slate-800/70 hover:border-emerald-500/50 rounded-xl transition flex items-center justify-between gap-3"
+                    >
+                      <div className="w-16 sm:w-20 shrink-0">
+                        <ExerciseThumbnail
+                          exercise={previewObj}
+                          onClick={() => onPreviewExercise(previewObj)}
+                          aspectRatio="16:9"
+                          showPlayBadge={true}
+                        />
                       </div>
-                      <h4 className="text-xs font-bold text-white truncate">
-                        {item.name}
-                      </h4>
-                      {item.tip && (
-                        <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">
-                          {item.tip}
-                        </p>
-                      )}
-                    </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-semibold text-emerald-400 uppercase">
+                            {item.muscleGroup}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            • {item.defaultSets}x{item.defaultReps}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-white truncate">
+                          {item.name}
+                        </h4>
+                        {item.tip && (
+                          <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">
+                            {item.tip}
+                          </p>
+                        )}
+                      </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <button
@@ -1176,8 +1659,9 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
                       </button>
                     </div>
                   </div>
-                ))
-              )}
+                );
+              })
+            )}
             </div>
           </div>
         </div>

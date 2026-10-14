@@ -41,7 +41,8 @@ export const HostingerGuideModal: React.FC<HostingerGuideModalProps> = ({ plan, 
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition"
+            className="min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition flex items-center justify-center"
+            aria-label="Fechar guia Hostinger"
           >
             <X className="w-5 h-5" />
           </button>
@@ -59,34 +60,66 @@ export const HostingerGuideModal: React.FC<HostingerGuideModalProps> = ({ plan, 
             </p>
           </div>
 
+          {/* Quick ZIP Download Banner */}
+          <div className="bg-emerald-950/40 border border-emerald-500/30 p-4 rounded-2xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                <Download className="w-4 h-4 text-emerald-400" />
+                Pacote de Publicação Gerado
+              </span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono">
+                ZIP • 105 KB
+              </span>
+            </div>
+            <p className="text-xs text-slate-300">
+              Geramos o arquivo <strong>hostinger-deploy.zip</strong> com o <code>index.html</code>, estilos, scripts e <code>.htaccess</code> configurados para subdomínio.
+            </p>
+            <a
+              href="./hostinger-deploy.zip"
+              download="hostinger-deploy.zip"
+              className="w-full min-h-[44px] py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950 text-center"
+            >
+              <Download className="w-4 h-4" />
+              Baixar hostinger-deploy.zip (Pronto para Upload)
+            </a>
+          </div>
+
           {/* 3 Step Deployment Guide */}
           <div className="space-y-2">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Como subir no seu hPanel / Hostinger em 3 passos:
+              Como subir no seu subdomínio da Hostinger em 3 passos:
             </h4>
 
             <div className="space-y-2 text-xs">
               <div className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl space-y-1">
-                <span className="font-bold text-emerald-400">1. Gerar os arquivos estáticos</span>
+                <span className="font-bold text-emerald-400">1. Criar o Subdomínio no hPanel</span>
                 <p className="text-slate-400 text-[11px]">
-                  Ao baixar o projeto (ou rodar <code>npm run build</code>), a pasta <code>dist/</code> é criada com os arquivos HTML, JS e CSS prontos para produção.
+                  No hPanel da Hostinger, vá em <strong>Domínios ➔ Subdomínios</strong> e crie o nome desejado (ex: <code>treino</code>). A Hostinger criará a pasta <code>public_html/treino/</code>.
                 </p>
               </div>
 
               <div className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl space-y-1">
-                <span className="font-bold text-emerald-400">2. Enviar para a Hostinger</span>
+                <span className="font-bold text-emerald-400">2. Enviar e Extrair o ZIP</span>
                 <p className="text-slate-400 text-[11px]">
-                  No painel da Hostinger, abra o <strong>Gerenciador de Arquivos (File Manager)</strong> e arraste os arquivos de <code>dist/</code> diretamente para dentro da pasta <code>public_html</code>.
+                  Abra o <strong>Gerenciador de Arquivos</strong> da Hostinger, entre na pasta <code>public_html/treino/</code>, clique em <strong>Fazer Upload</strong> do <code>hostinger-deploy.zip</code> e depois com o botão direito clique em <strong>Extrair</strong>.
                 </p>
               </div>
 
               <div className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl space-y-1">
-                <span className="font-bold text-emerald-400">3. Pronto para usar!</span>
+                <span className="font-bold text-emerald-400">3. Acessar seu App!</span>
                 <p className="text-slate-400 text-[11px]">
-                  Ao acessar seu domínio no celular, você já pode montar fichas e gerar links do WhatsApp que abrirão direto no seu próprio domínio sem qualquer mensalidade de banco de dados.
+                  Acesse <code>https://treino.seusite.com.br</code> no celular ou computador. O app abre instantaneamente e já gera links do WhatsApp direto no seu subdomínio!
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Automation GitHub notice */}
+          <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-400 text-[11px] space-y-1">
+            <span className="font-bold text-slate-300 block">Deploy Automático via GitHub Actions:</span>
+            <p>
+              O arquivo de automação <code>.github/workflows/deploy-hostinger.yml</code> e o guia completo <code>HOSTINGER_DEPLOY.md</code> já foram criados no repositório.
+            </p>
           </div>
 
           {/* Backup Action */}
@@ -105,7 +138,7 @@ export const HostingerGuideModal: React.FC<HostingerGuideModalProps> = ({ plan, 
         <div className="p-3 border-t border-slate-800 bg-slate-950 flex justify-end">
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition"
+            className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition flex items-center justify-center"
           >
             Entendido
           </button>

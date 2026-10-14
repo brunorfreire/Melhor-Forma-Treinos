@@ -188,60 +188,32 @@ function normalizeText(text: string): string {
 export function resolveExerciseYouTubeId(
   exerciseName?: string,
   youtubeIdOrUrl?: string,
-  muscleGroup?: string
-): string {
+  _muscleGroup?: string
+): string | null {
   // 1. Explicit ID or URL from exercise object
   const extracted = extractYouTubeId(youtubeIdOrUrl);
   if (extracted) return extracted;
 
-  if (!exerciseName) return 'rT7DgCr-3pg'; // Default Supino Reto tutorial
+  if (!exerciseName) return null;
 
   const normName = normalizeText(exerciseName);
 
-  // 2. Direct lookup in map
+  // 2. Direct lookup in curated map (Correspondência técnica exata)
   if (DEFAULT_EXERCISE_YOUTUBE_MAP[normName]) {
     return DEFAULT_EXERCISE_YOUTUBE_MAP[normName];
   }
 
-  // 3. Substring match in keys
+  // 3. Substring match in keys ONLY when significant portion matches
   for (const [key, id] of Object.entries(DEFAULT_EXERCISE_YOUTUBE_MAP)) {
     const normKey = normalizeText(key);
-    if (normName.includes(normKey) || normKey.includes(normName)) {
+    if (normName === normKey || (normName.length > 5 && normKey.length > 5 && (normName.includes(normKey) || normKey.includes(normName)))) {
       return id;
     }
   }
 
-  // Common keywords heuristics
-  if (normName.includes('supino') || normName.includes('peitoral')) return 'rT7DgCr-3pg';
-  if (normName.includes('agachamento') || normName.includes('squat')) return 'aclHkVaku9U';
-  if (normName.includes('leg press')) return 'IZxyjW7MPJQ';
-  if (normName.includes('extensora')) return 'YyvSfVjQeL0';
-  if (normName.includes('flexora')) return '1Tq3QdYUuHs';
-  if (normName.includes('stiff') || normName.includes('terra')) return '_oyxCn2iSjU';
-  if (normName.includes('puxada') || normName.includes('pulley') || normName.includes('costas')) return 'CAwf7n6Luuc';
-  if (normName.includes('remada')) return '6TSP138827w';
-  if (normName.includes('rosca') || normName.includes('biceps')) return 'in7PaeYlhrM';
-  if (normName.includes('triceps') || normName.includes('tríceps')) return 'vB5OHsJ3EME';
-  if (normName.includes('elevacao lateral') || normName.includes('desenvolvimento') || normName.includes('ombro')) return '3VcKaXpzqRo';
-  if (normName.includes('panturrilha') || normName.includes('gemeos')) return 'gwLzBJYoWlI';
-  if (normName.includes('abdominal') || normName.includes('prancha') || normName.includes('core')) return 'Xyd_fa5zoEU';
-
-  // 4. By Muscle Group
-  if (muscleGroup) {
-    const mg = normalizeText(muscleGroup);
-    if (mg.includes('peito')) return 'rT7DgCr-3pg';
-    if (mg.includes('costas')) return 'CAwf7n6Luuc';
-    if (mg.includes('ombro')) return '3VcKaXpzqRo';
-    if (mg.includes('biceps')) return 'in7PaeYlhrM';
-    if (mg.includes('triceps')) return 'vB5OHsJ3EME';
-    if (mg.includes('quadriceps') || mg.includes('perna')) return 'aclHkVaku9U';
-    if (mg.includes('posterior') || mg.includes('gluteo')) return '1Tq3QdYUuHs';
-    if (mg.includes('panturrilha')) return 'gwLzBJYoWlI';
-    if (mg.includes('abdomen') || mg.includes('core')) return 'pSHjTRCQxIw';
-  }
-
-  // 5. General fallback
-  return 'rT7DgCr-3pg';
+  // 4. Sem correspondência validada: retorna null para respeitar a regra
+  // de não associar vídeos de exercícios diferentes ou inventar demonstrações
+  return null;
 }
 
 /**

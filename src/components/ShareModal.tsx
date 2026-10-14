@@ -68,7 +68,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({ plan, onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition"
+            className="min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition flex items-center justify-center"
+            aria-label="Fechar modal de compartilhamento"
           >
             <X className="w-5 h-5" />
           </button>
@@ -100,34 +101,34 @@ export const ShareModal: React.FC<ShareModalProps> = ({ plan, onClose }) => {
                 value={studentPhone}
                 onChange={(e) => setStudentPhone(e.target.value)}
                 placeholder="Ex: 11987654321 ou em branco"
-                className="flex-1 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none"
+                className="flex-1 min-h-[44px] bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none"
               />
             </div>
             <button
               onClick={handleSendWhatsApp}
-              className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950 text-sm"
+              className="w-full min-h-[48px] py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950 text-sm"
             >
               <Send className="w-4 h-4" />
               Abrir WhatsApp e Enviar Ficha
             </button>
           </div>
 
-          {/* Quick Copy Action Buttons */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Quick Copy Action Buttons (Touch Target >= 44px) */}
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
             <button
               onClick={handleCopyLink}
-              className="py-2.5 px-3 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/70 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-98"
+              className="min-h-[44px] py-2.5 px-3 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/70 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-98"
             >
               {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-              {copiedLink ? 'Link Copiado!' : 'Copiar Link Direto'}
+              <span>{copiedLink ? 'Link Copiado!' : 'Copiar Link Direto'}</span>
             </button>
 
             <button
               onClick={handleCopyMsg}
-              className="py-2.5 px-3 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/70 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-98"
+              className="min-h-[44px] py-2.5 px-3 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/70 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-98"
             >
               {copiedMsg ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-              {copiedMsg ? 'Mensagem Copiada!' : 'Copiar Texto Completo'}
+              <span>{copiedMsg ? 'Mensagem Copiada!' : 'Copiar Texto Completo'}</span>
             </button>
           </div>
 

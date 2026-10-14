@@ -2,43 +2,43 @@ import React, { useState } from 'react';
 import { 
   CheckCircle2, 
   Circle, 
-  Youtube,
-  Play,
-  ChevronDown,
-  ChevronUp,
+  Play, 
   Share2, 
   Edit3, 
   Dumbbell, 
   Clock, 
   Send, 
-  Flame, 
   Trophy, 
-  Info,
   Layers,
-  Sparkles
+  Sparkles,
+  AlertTriangle,
+  BookOpen,
+  ShieldAlert,
+  VideoOff
 } from 'lucide-react';
 import { WorkoutPlan, WorkoutSession, Exercise } from '../types';
 import { formatStudentFinishedMessage, createWhatsAppShareLink } from '../utils/whatsapp';
-import { resolveExerciseYouTubeId, buildYouTubeEmbedUrl } from '../utils/youtube';
+import { resolveExerciseMedia } from '../utils/exerciseMedia';
+import { ExerciseThumbnail } from './ExerciseThumbnail';
 
 interface StudentWorkoutViewProps {
   plan: WorkoutPlan;
   onEditPlan: () => void;
   onOpenShareModal: () => void;
   onPreviewExercise: (ex: Exercise) => void;
+  onBackToCatalog?: () => void;
 }
 
 export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   plan,
   onEditPlan,
   onOpenShareModal,
-  onPreviewExercise
+  onPreviewExercise,
+  onBackToCatalog
 }) => {
   const [activeSessionIndex, setActiveSessionIndex] = useState(0);
   // Track completed exercise IDs per session (local state in browser session)
   const [completedExerciseIds, setCompletedExerciseIds] = useState<Record<string, boolean>>({});
-  // Track which exercise card has its inline video expanded
-  const [expandedInlineVideoId, setExpandedInlineVideoId] = useState<string | null>(null);
 
   const activeSession: WorkoutSession | undefined = plan.sessions[activeSessionIndex] || plan.sessions[0];
 
@@ -57,10 +57,6 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
     }));
   };
 
-  const toggleInlineVideo = (exerciseId: string) => {
-    setExpandedInlineVideoId(prev => (prev === exerciseId ? null : exerciseId));
-  };
-
   const totalExercises = activeSession.exercises.length;
   const completedCount = activeSession.exercises.filter(e => !!completedExerciseIds[e.id]).length;
   const progressPercent = totalExercises > 0 ? Math.round((completedCount / totalExercises) * 100) : 0;
@@ -73,46 +69,60 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-slate-950 text-slate-100 flex flex-col pb-28">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-slate-950 text-slate-100 flex flex-col pb-44">
       {/* Student App Bar */}
-      <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm">
+      <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-4 py-2.5 flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
             <Dumbbell className="w-4 h-4 text-emerald-400" />
           </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight text-white leading-tight">
-              Melhor Forma Treino
-            </h1>
-            <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Ficha do Aluno
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h1 className="text-xs sm:text-sm font-bold tracking-tight text-white leading-tight truncate">
+                Melhor Forma Play
+              </h1>
+              <span className="text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded shrink-0">
+                40+
+              </span>
+            </div>
+            <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+              Ficha com Vídeos
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 shrink-0">
+          {onBackToCatalog && (
+            <button
+              onClick={onBackToCatalog}
+              className="min-h-[44px] px-2.5 sm:px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-emerald-300 hover:text-white flex items-center gap-1 transition"
+              title="Explorar mais treinos no Catálogo Play"
+            >
+              <span>Catálogo</span>
+            </button>
+          )}
           <button
             onClick={onOpenShareModal}
-            className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 transition"
+            className="min-h-[44px] min-w-[44px] p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 transition flex items-center justify-center"
             title="Compartilhar no WhatsApp"
             aria-label="Compartilhar treino"
           >
-            <Share2 className="w-4 h-4" />
+            <Share2 className="w-4 h-4 text-emerald-400" />
           </button>
           <button
             onClick={onEditPlan}
-            className="py-1.5 px-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-slate-300 flex items-center gap-1.5 transition"
+            className="min-h-[44px] px-2.5 sm:px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-slate-300 flex items-center gap-1 transition"
             title="Editar ficha (Modo Treinador)"
           >
             <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Editar</span>
+            <span className="hidden xs:inline">Editar</span>
           </button>
         </div>
       </header>
 
       {/* Main Student Container */}
-      <div className="p-4 space-y-4 flex-1">
+      <div className="p-3 sm:p-4 space-y-4 flex-1">
         {/* Student & Trainer Identification Card */}
         <div className="bg-gradient-to-br from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
@@ -165,7 +175,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
             <span className="font-semibold flex items-center gap-1">
               <Layers className="w-3.5 h-3.5 text-emerald-400" /> Escolha o Treino de Hoje:
             </span>
-            <span className="text-[11px] text-emerald-400">
+            <span className="text-[11px] text-emerald-400 font-medium">
               {plan.sessions.length} divisões
             </span>
           </div>
@@ -174,11 +184,8 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
             {plan.sessions.map((session, idx) => (
               <button
                 key={session.id || idx}
-                onClick={() => {
-                  setActiveSessionIndex(idx);
-                  setExpandedInlineVideoId(null);
-                }}
-                className={`flex-1 min-w-[110px] py-2.5 px-3 rounded-xl font-bold text-xs transition border flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-98 ${
+                onClick={() => setActiveSessionIndex(idx)}
+                className={`flex-1 min-w-[105px] py-2.5 px-3 rounded-xl font-bold text-xs transition border flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-98 ${
                   idx === activeSessionIndex
                     ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-950'
                     : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-850 hover:text-slate-200'
@@ -213,7 +220,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
               <span className="text-xs font-bold text-emerald-400">
                 {completedCount}/{totalExercises}
               </span>
-              <span className="text-[10px] text-slate-400 block">feitos</span>
+              <span className="text-[10px] text-slate-400 block">concluídos</span>
             </div>
           </div>
 
@@ -230,129 +237,157 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
         <div className="space-y-3 pt-1">
           {activeSession.exercises.map((exercise, idx) => {
             const isCompleted = !!completedExerciseIds[exercise.id];
-            const isInlineVideoOpen = expandedInlineVideoId === exercise.id;
-            const videoId = resolveExerciseYouTubeId(
-              exercise.name,
-              exercise.youtubeId || exercise.youtubeUrl,
-              exercise.muscleGroup
-            );
+            const media = resolveExerciseMedia(exercise);
 
             return (
               <div
                 key={exercise.id}
-                className={`transition rounded-2xl border p-4 space-y-3 ${
+                className={`transition-all rounded-2xl border p-3 sm:p-3.5 space-y-3 ${
                   isCompleted
-                    ? 'bg-slate-950/40 border-emerald-900/40 opacity-75'
-                    : 'bg-slate-900/90 border-slate-800 shadow-md'
+                    ? 'bg-slate-950/50 border-emerald-900/40 opacity-80'
+                    : 'bg-slate-900/90 border-slate-800/90 shadow-md hover:border-slate-700'
                 }`}
               >
-                {/* Exercise Header Row */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-2.5 min-w-0">
+                {/* Top Section: Checkbox + Title + Muscle Badge */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                    {/* Botão independente para marcar exercício como concluído (Min 44x44px touch) */}
                     <button
                       onClick={() => toggleExerciseComplete(exercise.id)}
-                      className="mt-0.5 text-slate-400 hover:text-emerald-400 transition shrink-0"
-                      aria-label={isCompleted ? "Marcar como não feito" : "Marcar como concluído"}
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2 -mt-1 text-slate-400 hover:text-emerald-400 transition shrink-0 rounded-xl"
+                      aria-label={isCompleted ? `Desmarcar ${exercise.name}` : `Marcar ${exercise.name} como concluído`}
                     >
                       {isCompleted ? (
                         <CheckCircle2 className="w-6 h-6 text-emerald-400 fill-emerald-500/20" />
                       ) : (
-                        <Circle className="w-6 h-6 text-slate-600 hover:text-emerald-400" />
+                        <Circle className="w-6 h-6 text-slate-600 hover:text-emerald-400 transition" />
                       )}
                     </button>
 
-                    <div className="min-w-0">
+                    <div className="min-w-0 pt-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-mono font-bold bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-mono font-bold bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded">
                           #{idx + 1}
                         </span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
                           {exercise.muscleGroup}
                         </span>
+                        {isCompleted && (
+                          <span className="text-[9px] font-bold text-emerald-300 bg-emerald-500/20 px-1.5 py-0.2 rounded">
+                            Feito
+                          </span>
+                        )}
                       </div>
-                      <h4 className={`text-sm sm:text-base font-bold mt-0.5 leading-snug truncate ${isCompleted ? 'line-through text-slate-400' : 'text-white'}`}>
+                      <h4 className={`text-sm sm:text-base font-bold mt-0.5 leading-snug break-words ${isCompleted ? 'line-through text-slate-400' : 'text-white'}`}>
                         {exercise.name}
                       </h4>
                     </div>
                   </div>
+                </div>
 
-                  {/* Video Actions: YouTube Modal & Inline Toggle */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {/* Primary Button: Opens In-App YouTube Modal */}
-                    <button
-                      onClick={() => onPreviewExercise(exercise)}
-                      className="px-2.5 py-1.5 bg-red-600/15 hover:bg-red-600/25 active:scale-95 border border-red-500/30 text-white rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm shadow-red-950/40"
-                      title="Abrir vídeo demonstrativo no YouTube"
-                      aria-label={`Ver vídeo de execução de ${exercise.name}`}
-                    >
-                      <Youtube className="w-4 h-4 text-red-500 fill-current" />
-                      <span className="text-[11px] text-slate-100">Vídeo</span>
-                    </button>
+                {/* Main Row: Miniatura Horizontal à Esquerda & Informações à Direita */}
+                <div className="flex items-center gap-3">
+                  {/* Miniatura 16:9 clicável com ícone de reprodução sobreposto */}
+                  <div className="w-24 xs:w-28 sm:w-32 shrink-0">
+                    <ExerciseThumbnail
+                      exercise={exercise}
+                      onClick={media.hasVideo ? () => onPreviewExercise(exercise) : undefined}
+                      aspectRatio="16:9"
+                      showPlayBadge={true}
+                    />
+                  </div>
 
-                    {/* Secondary Quick Toggle: Embeds directly inside card */}
-                    <button
-                      onClick={() => toggleInlineVideo(exercise.id)}
-                      className={`p-1.5 rounded-xl border transition text-xs flex items-center justify-center ${
-                        isInlineVideoOpen
-                          ? 'bg-red-500/20 text-red-400 border-red-500/40'
-                          : 'bg-slate-800/80 hover:bg-slate-850 text-slate-400 hover:text-slate-200 border-slate-700'
-                      }`}
-                      title={isInlineVideoOpen ? "Recolher vídeo" : "Expandir vídeo no card"}
-                      aria-label="Alternar vídeo no card"
-                    >
-                      {isInlineVideoOpen ? (
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      ) : (
-                        <Play className="w-3.5 h-3.5 fill-current" />
+                  {/* Informações à direita + Botão "Ver execução" */}
+                  <div className="flex-1 min-w-0 space-y-2">
+                    {/* Botão visível "Ver execução" ou Indicação Discreta (Prompt Regras 2 e 7) */}
+                    {media.isValidated ? (
+                      <button
+                        type="button"
+                        onClick={() => onPreviewExercise(exercise)}
+                        className="w-full min-h-[44px] py-2 px-3 bg-emerald-600/15 hover:bg-emerald-600/25 active:scale-98 border border-emerald-500/40 text-emerald-300 hover:text-white rounded-xl transition flex items-center justify-center gap-2 text-xs font-bold shadow-sm shadow-emerald-950/30"
+                        title="Abrir vídeo demonstrativo validado em tela cheia"
+                        aria-label={`Ver execução validada de ${exercise.name}`}
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current text-emerald-400 shrink-0" />
+                        <span className="tracking-wide">Ver execução</span>
+                      </button>
+                    ) : media.status === 'pendente' ? (
+                      <div 
+                        className="w-full min-h-[44px] py-2 px-3 bg-amber-950/20 border border-amber-800/40 text-amber-300/80 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold select-none"
+                        title="Demonstração em revisão técnica pelo treinador"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>Em revisão técnica</span>
+                      </div>
+                    ) : (
+                      <div 
+                        className="w-full min-h-[44px] py-2 px-3 bg-slate-950 border border-slate-800 text-slate-500 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold select-none opacity-75"
+                        title="Nenhum vídeo demonstrativo disponível para este movimento"
+                      >
+                        <VideoOff className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>Sem vídeo</span>
+                      </div>
+                    )}
+
+                    {/* Resumo rápido do estímulo */}
+                    <div className="text-[11px] text-slate-300 font-medium leading-tight flex items-center gap-2 flex-wrap">
+                      <span className="text-white font-bold">{exercise.sets} séries</span>
+                      <span className="text-slate-500">•</span>
+                      <span>{exercise.reps} reps</span>
+                      {exercise.weight && (
+                        <>
+                          <span className="text-slate-500">•</span>
+                          <span className="text-amber-300 font-bold">{exercise.weight}</span>
+                        </>
                       )}
-                    </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Inline YouTube Player if expanded inside the card */}
-                {isInlineVideoOpen && (
-                  <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-red-500/30 shadow-xl animate-fadeIn">
-                    <iframe
-                      src={buildYouTubeEmbedUrl(videoId, true)}
-                      title={`Vídeo: ${exercise.name}`}
-                      className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    />
+                {/* Métricas detalhadas (Séries, Repetições/Duração, Descanso, Carga) - Adaptável para 320px */}
+                <div className="grid grid-cols-2 xs:grid-cols-4 gap-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80 text-center">
+                  <div className="p-1">
+                    <span className="text-[9px] text-slate-400 uppercase block font-semibold">Séries</span>
+                    <span className="text-xs font-bold text-white block truncate">{exercise.sets || '3'}</span>
                   </div>
-                )}
-
-                {/* Metrics Badges (Séries, Reps, Descanso, Carga) */}
-                <div className="grid grid-cols-4 gap-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80 text-center">
-                  <div>
-                    <span className="text-[9px] text-slate-400 uppercase block">Séries</span>
-                    <span className="text-xs font-bold text-white">{exercise.sets}</span>
+                  <div className="p-1 border-l border-slate-800/80">
+                    <span className="text-[9px] text-slate-400 uppercase block font-semibold">Reps / Tempo</span>
+                    <span className="text-xs font-bold text-white block truncate" title={exercise.reps}>{exercise.reps || '10'}</span>
                   </div>
-                  <div className="border-l border-slate-800/80">
-                    <span className="text-[9px] text-slate-400 uppercase block">Reps</span>
-                    <span className="text-xs font-bold text-white">{exercise.reps}</span>
+                  <div className="p-1 border-t xs:border-t-0 xs:border-l border-slate-800/80">
+                    <span className="text-[9px] text-slate-400 uppercase block font-semibold">Intervalo</span>
+                    <span className="text-xs font-bold text-emerald-400 block truncate">{exercise.rest || '60s'}</span>
                   </div>
-                  <div className="border-l border-slate-800/80">
-                    <span className="text-[9px] text-slate-400 uppercase block">Pausa</span>
-                    <span className="text-xs font-bold text-emerald-400">{exercise.rest}</span>
-                  </div>
-                  <div className="border-l border-slate-800/80">
-                    <span className="text-[9px] text-slate-400 uppercase block">Carga</span>
-                    <span className="text-xs font-bold text-amber-300 truncate block px-0.5">
+                  <div className="p-1 border-t xs:border-t-0 border-l border-slate-800/80">
+                    <span className="text-[9px] text-slate-400 uppercase block font-semibold">Carga</span>
+                    <span className="text-xs font-bold text-amber-300 truncate block px-0.5" title={exercise.weight || '-'}>
                       {exercise.weight || '-'}
                     </span>
                   </div>
                 </div>
 
-                {/* Trainer Notes */}
-                {exercise.notes && (
-                  <div className="bg-slate-950/70 border-l-2 border-amber-500/80 pl-2.5 py-1.5 pr-2 rounded-r-lg text-xs text-slate-300">
-                    <span className="text-[10px] font-bold text-amber-400 block uppercase">
-                      Observação:
-                    </span>
-                    <p className="text-[11px] leading-relaxed text-slate-300 mt-0.5">
-                      {exercise.notes}
-                    </p>
+                {/* Orientações técnicas resumidas & Recado do Treinador */}
+                {(exercise.notes || media.instructions) && (
+                  <div className="bg-slate-950/70 border-l-2 border-emerald-500/80 pl-2.5 py-1.5 pr-2 rounded-r-lg text-xs space-y-1">
+                    {exercise.notes ? (
+                      <div>
+                        <span className="text-[10px] font-bold text-amber-400 block uppercase">
+                          Dica do Treinador:
+                        </span>
+                        <p className="text-[11px] leading-relaxed text-slate-300 mt-0.5 break-words">
+                          {exercise.notes}
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="text-[10px] font-bold text-emerald-400 block uppercase">
+                          Orientações Técnicas:
+                        </span>
+                        <p className="text-[11px] leading-relaxed text-slate-300 mt-0.5 break-words">
+                          {media.instructions}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -360,38 +395,50 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
           })}
         </div>
 
-        {/* Workout Finished Celebration Banner */}
+        {/* Workout Finished Trophy Card */}
         {isSessionFinished && (
-          <div className="bg-gradient-to-br from-emerald-950/70 to-slate-900 border border-emerald-500/50 rounded-2xl p-4 text-center space-y-3 animate-fadeIn mt-4">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 mx-auto flex items-center justify-center text-emerald-400">
-              <Trophy className="w-6 h-6" />
+          <div className="bg-gradient-to-br from-emerald-950/50 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-2xl p-5 text-center space-y-3 animate-fadeIn shadow-xl">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <Trophy className="w-6 h-6 animate-bounce" />
             </div>
-            <div>
-              <h4 className="text-base font-bold text-white">
-                Treino Concluído com Sucesso! 🔥
-              </h4>
-              <p className="text-xs text-slate-300 mt-1">
-                Você completou todos os {totalExercises} exercícios de {activeSession.name}!
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-white">
+                Treino Finalizado com Sucesso! 🎉
+              </h3>
+              <p className="text-xs text-slate-300 max-w-xs mx-auto">
+                Você concluiu todos os exercícios do {activeSession.name}. Envie o feedback para seu treinador!
               </p>
             </div>
 
             <button
               onClick={handleNotifyTrainer}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
+              className="w-full min-h-[46px] py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
             >
               <Send className="w-4 h-4" />
-              Avisar Treinador no WhatsApp
+              <span>Avisar Treinador no WhatsApp</span>
             </button>
           </div>
         )}
+      </div>
 
-        {/* Bottom Helper Bar */}
-        <div className="pt-4 text-center space-y-2">
-          <p className="text-[11px] text-slate-500">
-            Ficha gerada por <strong>Melhor Forma Treino V1 Lite</strong>
-            <br />
-            Vídeos demonstrativos em alta definição integrados via YouTube
-          </p>
+      {/* Floating Bottom Bar with Share & Finish */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-3">
+        <div className="max-w-md mx-auto flex items-center gap-2">
+          <button
+            onClick={onOpenShareModal}
+            className="min-h-[46px] flex-1 py-3 px-4 bg-slate-900 hover:bg-slate-850 border border-slate-700/80 active:scale-98 text-slate-200 font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition"
+          >
+            <Share2 className="w-4 h-4 text-emerald-400" />
+            <span>Compartilhar</span>
+          </button>
+
+          <button
+            onClick={handleNotifyTrainer}
+            className="min-h-[46px] flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
+          >
+            <Send className="w-4 h-4" />
+            <span>Concluir Treino</span>
+          </button>
         </div>
       </div>
     </div>
