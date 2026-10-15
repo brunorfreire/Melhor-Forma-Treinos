@@ -52,6 +52,7 @@ import {
 } from '../utils/studentProgressService';
 import { ExerciseThumbnail } from './ExerciseThumbnail';
 import { PremiumModal } from './PremiumModal';
+import { MyWorkoutTodayModal } from './MyWorkoutTodayModal';
 
 interface StreamingHomeViewProps {
   onSelectSessionToTrain: (plan: WorkoutPlan) => void;
@@ -75,6 +76,9 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
 
   // Modal de Conteúdo Premium
   const [premiumModalWorkout, setPremiumModalWorkout] = useState<CatalogWorkout | null>(null);
+
+  // Modal Meu Treino de Hoje (Seleção múltipla de objetivos)
+  const [isTodayModalOpen, setIsTodayModalOpen] = useState(false);
 
   // Sessão em andamento ("Continue de onde parou")
   const [activeSession, setActiveSession] = useState<ActiveWorkoutSession | null>(() => getActiveWorkoutSession());
@@ -585,6 +589,14 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
             {/* Hero CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
               <button
+                onClick={() => setIsTodayModalOpen(true)}
+                className="min-h-[48px] py-3.5 px-6 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 active:scale-98 text-slate-950 font-black rounded-xl text-sm sm:text-base flex items-center justify-center gap-2.5 transition shadow-xl shadow-emerald-950/70"
+              >
+                <Target className="w-4 h-4 text-slate-950 shrink-0" />
+                <span>MEU TREINO DE HOJE</span>
+              </button>
+
+              <button
                 onClick={scrollToCatalog}
                 className="min-h-[48px] py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-sm sm:text-base flex items-center justify-center gap-2.5 transition shadow-xl shadow-emerald-950/60"
               >
@@ -597,7 +609,7 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                 className="min-h-[48px] py-3.5 px-6 bg-slate-900/90 hover:bg-slate-800/90 active:scale-98 border border-emerald-500/40 text-emerald-300 hover:text-white font-bold rounded-xl text-sm sm:text-base flex items-center justify-center gap-2 transition backdrop-blur-md shadow-lg"
               >
                 <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>CONHECER A COLEÇÃO 40+</span>
+                <span>COLEÇÃO 40+</span>
               </button>
             </div>
           </div>
@@ -763,8 +775,33 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* 4. BARRA DE BUSCA E FILTROS RÁPIDOS STREAMING                             */}
+      {/* 3.5. BANNER INTERATIVO: MEU TREINO DE HOJE (MÚLTIPLOS OBJETIVOS)           */}
       {/* ========================================================================= */}
+      <section className="w-full max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-3">
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-950/90 via-slate-900 to-teal-950/80 border border-emerald-500/40 p-4 sm:p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>RECOMENDAÇÃO INTELIGENTE 40+</span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-black text-white">
+              Não sabe por onde começar hoje?
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Selecione até 3 objetivos (como força, condicionamento e equilíbrio) e receba a recomendação ideal entre os 72 treinos do catálogo para praticar agora.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsTodayModalOpen(true)}
+            className="min-h-[46px] px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 active:scale-95 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/50 shrink-0"
+          >
+            <Target className="w-4 h-4 text-slate-950" />
+            <span>Descobrir Meu Treino de Hoje</span>
+          </button>
+        </div>
+      </section>
+
       {/* ========================================================================= */}
       {/* 4. BARRA DE BUSCA E GRADE RESPONSIVA DE CATEGORIAS                        */}
       {/* ========================================================================= */}
@@ -1364,6 +1401,24 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
         isOpen={!!premiumModalWorkout}
         onClose={() => setPremiumModalWorkout(null)}
         targetWorkout={premiumModalWorkout}
+      />
+
+      {/* ========================================================================= */}
+      {/* 8. MODAL MEU TREINO DE HOJE (SELEÇÃO MÚLTIPLA DETERMINÍSTICA)             */}
+      {/* ========================================================================= */}
+      <MyWorkoutTodayModal
+        isOpen={isTodayModalOpen}
+        onClose={() => setIsTodayModalOpen(false)}
+        workouts={catalogWorkouts}
+        onStartSession={onSelectSessionToTrain}
+        onPreviewSession={(session) => {
+          setSelectedPreviewSession(session);
+          setIsTodayModalOpen(false);
+        }}
+        onOpenLock={(workout) => {
+          setPremiumModalWorkout(workout);
+          setIsTodayModalOpen(false);
+        }}
       />
     </div>
   );

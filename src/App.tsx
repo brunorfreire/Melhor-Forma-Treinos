@@ -15,6 +15,8 @@ import { saveStudentWorkout } from './utils/studentStorage';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { MelhorFormaLogo } from './components/MelhorFormaLogo';
+import { MyWorkoutTodayModal } from './components/MyWorkoutTodayModal';
+import { getAllCatalogWorkouts } from './data/workoutCatalogService';
 import { 
   Play, 
   Sparkles, 
@@ -24,7 +26,8 @@ import {
   Film, 
   CheckCircle2, 
   ChevronRight,
-  Share2
+  Share2,
+  Target
 } from 'lucide-react';
 
 const STORAGE_KEY = 'mf_treino_v1_lite_plan';
@@ -37,6 +40,7 @@ export default function App() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isHostingerModalOpen, setIsHostingerModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isTodayModalOpen, setIsTodayModalOpen] = useState(false);
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
 
   // Check URL on load for #plan=... or #colecao
@@ -211,6 +215,16 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setIsTodayModalOpen(true)}
+              className="min-h-[44px] px-2 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-white border border-emerald-500/35 shadow-sm"
+              title="Descobrir o treino ideal para os objetivos de hoje"
+            >
+              <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">Treino de Hoje</span>
+              <span className="sm:hidden text-[11px]">Hoje</span>
+            </button>
+
+            <button
               onClick={() => setViewMode('student')}
               className={`min-h-[44px] px-2 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 ${
                 viewMode === 'student'
@@ -280,6 +294,7 @@ export default function App() {
             onOpenShareModal={() => setIsShareModalOpen(true)}
             onPreviewExercise={(ex) => setPreviewExercise(ex)}
             onBackToCatalog={() => setViewMode('home')}
+            onOpenTodayRecommender={() => setIsTodayModalOpen(true)}
           />
           {/* Integrated Floating Rest Timer for Student */}
           <RestTimer />
@@ -333,6 +348,16 @@ export default function App() {
         <MuscleWikiModal
           exercise={previewExercise}
           onClose={() => setPreviewExercise(null)}
+        />
+      )}
+
+      {/* Modal Global: Meu Treino de Hoje (Múltiplos Objetivos 40+) */}
+      {isTodayModalOpen && (
+        <MyWorkoutTodayModal
+          isOpen={isTodayModalOpen}
+          onClose={() => setIsTodayModalOpen(false)}
+          workouts={getAllCatalogWorkouts()}
+          onStartSession={handleSelectSessionToTrain}
         />
       )}
     </main>

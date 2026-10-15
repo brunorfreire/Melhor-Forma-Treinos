@@ -257,3 +257,41 @@ export interface StudentProgressStats {
   categoryBreakdown: Record<string, number>;
   lastCompletedDate?: string;
 }
+
+/**
+ * Tipos para "Meu Treino de Hoje" com seleção de múltiplos objetivos
+ */
+export type TodayWorkoutGoalId = 
+  | 'ganhar-forca'
+  | 'melhorar-condicionamento'
+  | 'melhorar-mobilidade'
+  | 'desenvolver-equilibrio'
+  | 'treinar-corpo-inteiro';
+
+export interface TodayGoalOption {
+  id: TodayWorkoutGoalId;
+  label: string;
+  description: string;
+  iconName: string;
+}
+
+export type TodayExperienceLevel = 'iniciante' | 'intermediario' | 'avancado' | 'todos';
+export type TodayDurationPref = 'rapido' | 'medio' | 'longo' | 'todos';
+export type TodayMusclePref = 'todos' | 'superiores' | 'inferiores' | 'full_body' | 'mobilidade' | 'peitoral-ombro-triceps' | 'costas-biceps';
+
+export interface TodayWorkoutPreferences {
+  goals: TodayWorkoutGoalId[];
+  level: TodayExperienceLevel;
+  duration: TodayDurationPref;
+  musclePref: TodayMusclePref;
+}
+
+export interface RecommendedWorkoutMatch {
+  workout: CatalogWorkout;
+  matchScore: number; // 0 a 100%
+  matchingGoals: TodayWorkoutGoalId[];
+  matchedGoalLabels: string[];
+  reasons: string[];
+  isTopMatch?: boolean;
+}
+

@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   BookOpen,
   ShieldAlert,
-  VideoOff
+  VideoOff,
+  Target
 } from 'lucide-react';
 import { WorkoutPlan, WorkoutSession, Exercise } from '../types';
 import { formatStudentFinishedMessage, createWhatsAppShareLink } from '../utils/whatsapp';
@@ -33,6 +34,7 @@ interface StudentWorkoutViewProps {
   onOpenShareModal: () => void;
   onPreviewExercise: (ex: Exercise) => void;
   onBackToCatalog?: () => void;
+  onOpenTodayRecommender?: () => void;
 }
 
 export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
@@ -40,7 +42,8 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   onEditPlan,
   onOpenShareModal,
   onPreviewExercise,
-  onBackToCatalog
+  onBackToCatalog,
+  onOpenTodayRecommender
 }) => {
   const [activeSessionIndex, setActiveSessionIndex] = useState(0);
   // Track completed exercise IDs per session (local state in browser session)
@@ -130,6 +133,16 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
               title="Explorar mais treinos no Catálogo Play"
             >
               <span>Catálogo</span>
+            </button>
+          )}
+          {onOpenTodayRecommender && (
+            <button
+              onClick={onOpenTodayRecommender}
+              className="min-h-[44px] px-2.5 sm:px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-xs font-bold text-emerald-300 hover:text-white flex items-center gap-1.5 transition"
+              title="Descobrir o treino ideal para os objetivos de hoje"
+            >
+              <Target className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Treino de Hoje</span>
             </button>
           )}
           <button
