@@ -48,7 +48,8 @@ import {
   getActiveWorkoutSession, 
   getFavoriteWorkoutIds, 
   toggleFavoriteWorkout, 
-  clearActiveWorkoutSession
+  clearActiveWorkoutSession,
+  getStudentProgressStats
 } from '../utils/studentProgressService';
 import { ExerciseThumbnail } from './ExerciseThumbnail';
 import { PremiumModal } from './PremiumModal';
@@ -60,6 +61,7 @@ interface StreamingHomeViewProps {
   onOpenTrainerEditor: () => void;
   onPreviewExercise: (ex: Exercise) => void;
   onOpenShareModal?: (plan: WorkoutPlan) => void;
+  onOpenEvolution?: () => void;
 }
 
 export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
@@ -67,12 +69,16 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
   onOpenCollection,
   onOpenTrainerEditor,
   onPreviewExercise,
-  onOpenShareModal
+  onOpenShareModal,
+  onOpenEvolution
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('todos');
   const [categoryGroup, setCategoryGroup] = useState<'todos' | 'divisoes' | 'pilares' | 'niveis_acesso'>('todos');
   const [selectedPreviewSession, setSelectedPreviewSession] = useState<CollectionWorkoutSession | null>(null);
+
+  // Estatísticas reais de evolução do aluno
+  const [progressStats, setProgressStats] = useState(() => getStudentProgressStats());
 
   // Modal de Conteúdo Premium
   const [premiumModalWorkout, setPremiumModalWorkout] = useState<CatalogWorkout | null>(null);
@@ -90,10 +96,11 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
   const [bannerImgError, setBannerImgError] = useState(false);
   const [cardImgErrors, setCardImgErrors] = useState<Record<string, boolean>>({});
 
-  // Recarrega favoritos e sessão ativa ao montar
+  // Recarrega favoritos, sessão ativa e estatísticas ao montar
   useEffect(() => {
     setActiveSession(getActiveWorkoutSession());
     setFavoriteIds(getFavoriteWorkoutIds());
+    setProgressStats(getStudentProgressStats());
   }, []);
 
   // 72 Workouts Catalog Loading (Published only for student streaming view)
@@ -668,6 +675,49 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                   <X className="w-4 h-4" />
                 </button>
               </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2.5. CARD DE PROGRESSO & MINHA EVOLUÇÃO 40+                               */}
+      {/* ========================================================================= */}
+      {onOpenEvolution && (
+        <section className="w-full max-w-7xl mx-auto px-3 sm:px-6 md:px-8 pt-4">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/95 to-emerald-950/40 border border-slate-800 hover:border-emerald-500/40 p-3.5 sm:p-4 shadow-lg transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 shrink-0">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-teal-400 bg-teal-500/10 border border-teal-500/30 px-2 py-0.5 rounded-full">
+                    Minha Evolução 40+
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {progressStats.completedWorkoutsCount > 0 
+                      ? `${progressStats.completedWorkoutsCount} treinos concluídos • ${progressStats.totalTrainingMinutes} min em movimento`
+                      : 'Sem treinos registrados ainda • Comece hoje sua jornada'}
+                  </span>
+                </div>
+                <h4 className="text-xs sm:text-sm font-black text-white truncate mt-1">
+                  {progressStats.weeklyFrequency > 0 
+                    ? `Frequência Semanal: ${progressStats.weeklyFrequency} sessão(ões) nos últimos 7 dias`
+                    : 'Constância para longevidade, força e autonomia diária'}
+                </h4>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <button
+                onClick={onOpenEvolution}
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-teal-600/25 hover:bg-teal-600 text-teal-300 hover:text-white border border-teal-500/40 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+              >
+                <Trophy className="w-4 h-4" />
+                <span>Ver Minha Evolução</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </section>

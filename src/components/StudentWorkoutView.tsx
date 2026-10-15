@@ -35,6 +35,7 @@ interface StudentWorkoutViewProps {
   onPreviewExercise: (ex: Exercise) => void;
   onBackToCatalog?: () => void;
   onOpenTodayRecommender?: () => void;
+  onOpenEvolution?: () => void;
 }
 
 export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
@@ -43,11 +44,18 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   onOpenShareModal,
   onPreviewExercise,
   onBackToCatalog,
-  onOpenTodayRecommender
+  onOpenTodayRecommender,
+  onOpenEvolution
 }) => {
   const [activeSessionIndex, setActiveSessionIndex] = useState(0);
   // Track completed exercise IDs per session (local state in browser session)
   const [completedExerciseIds, setCompletedExerciseIds] = useState<Record<string, boolean>>({});
+  const [showFinishedModal, setShowFinishedModal] = useState(false);
+  const [lastRecordedSummary, setLastRecordedSummary] = useState<{
+    title: string;
+    muscles: string[];
+    duration: number;
+  } | null>(null);
 
   const activeSession: WorkoutSession | undefined = plan.sessions[activeSessionIndex] || plan.sessions[0];
 
@@ -88,19 +96,36 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   const progressPercent = totalExercises > 0 ? Math.round((completedCount / totalExercises) * 100) : 0;
   const isSessionFinished = totalExercises > 0 && completedCount === totalExercises;
 
-  const handleNotifyTrainer = () => {
+  const handleCompleteWorkout = (notifyWhatsApp: boolean = false) => {
+    // Extrai grupos musculares únicos trabalhados
+    const uniqueMuscles = Array.from(new Set(activeSession.exercises.map(e => e.muscleGroup).filter(Boolean)));
+    const goalsList = plan.goal ? [plan.goal] : ['Força e Autonomia 40+'];
+    const estimatedMinutes = Math.max(15, Math.min(50, (completedCount || totalExercises) * 3));
+
     // Registra no histórico real de conclusão
     recordCompletedWorkout(
       plan.id,
       activeSession.name,
       'forca_40_plus',
-      30
+      estimatedMinutes,
+      goalsList,
+      uniqueMuscles,
+      'iniciante'
     );
     clearActiveWorkoutSession();
 
-    const text = formatStudentFinishedMessage(plan, activeSession);
-    const url = createWhatsAppShareLink(plan.trainerPhone || '', text);
-    window.open(url, '_blank');
+    setLastRecordedSummary({
+      title: activeSession.name,
+      muscles: uniqueMuscles,
+      duration: estimatedMinutes
+    });
+    setShowFinishedModal(true);
+
+    if (notifyWhatsApp) {
+      const text = formatStudentFinishedMessage(plan, activeSession);
+      const url = createWhatsAppShareLink(plan.trainerPhone || '', text);
+      window.open(url, '_blank');
+    }
   };
 
   return (
@@ -133,6 +158,16 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
               title="Explorar mais treinos no Catálogo Play"
             >
               <span>Catálogo</span>
+            </button>
+          )}
+          {onOpenEvolution && (
+            <button
+              onClick={onOpenEvolution}
+              className="min-h-[44px] px-2.5 sm:px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-teal-300 hover:text-white flex items-center gap-1 transition"
+              title="Acompanhar meus treinos concluídos e frequência semanal"
+            >
+              <Trophy className="w-3.5 h-3.5 text-teal-400" />
+              <span className="hidden sm:inline">Evolução</span>
             </button>
           )}
           {onOpenTodayRecommender && (
@@ -454,11 +489,11 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
             </div>
 
             <button
-              onClick={handleNotifyTrainer}
+              onClick={() => handleCompleteWorkout(true)}
               className="w-full min-h-[46px] py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
             >
               <Send className="w-4 h-4" />
-              <span>Avisar Treinador no WhatsApp</span>
+              <span>Concluir e Avisar Treinador no WhatsApp</span>
             </button>
           </div>
         )}
@@ -476,14 +511,93 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
           </button>
 
           <button
-            onClick={handleNotifyTrainer}
-            className="min-h-[46px] flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
+            onClick={() => handleCompleteWorkout(false)}
+            className="min-h-[46px] flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-98 text-white font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/60"
           >
-            <Send className="w-4 h-4" />
+            <CheckCircle2 className="w-4 h-4" />
             <span>Concluir Treino</span>
           </button>
         </div>
       </div>
+
+      {/* Modal de Celebração & Conclusão de Treino com Integração à Evolução */}
+      {showFinishedModal && lastRecordedSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="bg-slate-900 border border-emerald-500/40 rounded-3xl p-5 sm:p-6 w-full max-w-sm shadow-2xl space-y-4 text-center animate-fadeIn">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+              <Trophy className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                Registrado na Sua Evolução
+              </span>
+              <h3 className="text-lg font-black text-white pt-1">
+                Treino Concluído! 🎉
+              </h3>
+              <p className="text-xs text-slate-300">
+                {lastRecordedSummary.title} foi salvo no seu histórico de longevidade.
+              </p>
+            </div>
+
+            <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-left space-y-1.5 text-xs text-slate-300">
+              <div className="flex justify-between text-slate-400 text-[11px]">
+                <span>Duração registrada:</span>
+                <span className="font-bold text-white">{lastRecordedSummary.duration} min</span>
+              </div>
+              {lastRecordedSummary.muscles.length > 0 && (
+                <div className="pt-1">
+                  <span className="text-[10px] text-slate-400 block mb-1">Músculos estimulados:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {lastRecordedSummary.muscles.slice(0, 4).map((m, i) => (
+                      <span key={i} className="text-[9px] font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 pt-1">
+              {onOpenEvolution && (
+                <button
+                  onClick={() => {
+                    setShowFinishedModal(false);
+                    onOpenEvolution();
+                  }}
+                  className="w-full min-h-[44px] py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-md shadow-emerald-950"
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span>Ver Minha Evolução</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  const text = formatStudentFinishedMessage(plan, activeSession);
+                  const url = createWhatsAppShareLink(plan.trainerPhone || '', text);
+                  window.open(url, '_blank');
+                }}
+                className="w-full min-h-[44px] py-2.5 px-4 bg-slate-950 hover:bg-slate-850 border border-slate-700 text-emerald-300 hover:text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition"
+              >
+                <Send className="w-4 h-4" />
+                <span>Avisar Treinador no WhatsApp</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowFinishedModal(false);
+                  if (onBackToCatalog) onBackToCatalog();
+                }}
+                className="w-full min-h-[40px] text-xs text-slate-400 hover:text-white transition"
+              >
+                Voltar ao Catálogo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

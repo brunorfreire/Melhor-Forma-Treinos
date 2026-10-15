@@ -16,6 +16,7 @@ import { PWAInstallButton } from './components/PWAInstallButton';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { MelhorFormaLogo } from './components/MelhorFormaLogo';
 import { MyWorkoutTodayModal } from './components/MyWorkoutTodayModal';
+import { StudentEvolutionView } from './components/StudentEvolutionView';
 import { getAllCatalogWorkouts } from './data/workoutCatalogService';
 import { 
   Play, 
@@ -27,7 +28,8 @@ import {
   CheckCircle2, 
   ChevronRight,
   Share2,
-  Target
+  Target,
+  Trophy
 } from 'lucide-react';
 
 const STORAGE_KEY = 'mf_treino_v1_lite_plan';
@@ -186,11 +188,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Navigation Tabs: Grid 4 columns on mobile, Flex row on sm+ (Touch targets >= 44x44px) */}
-          <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 sm:gap-1.5 text-xs font-bold w-full sm:w-auto pt-1 sm:pt-0 border-t border-slate-900 sm:border-0">
+          {/* Navigation Tabs: Responsive Flex with scroll on mobile, Flex row on sm+ (Touch targets >= 44x44px) */}
+          <div className="flex items-center overflow-x-auto no-scrollbar gap-1 sm:gap-1.5 text-xs font-bold w-full sm:w-auto pt-1 sm:pt-0 border-t border-slate-900 sm:border-0 scroll-smooth">
             <button
               onClick={() => setViewMode('home')}
-              className={`min-h-[44px] px-2 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 ${
+              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
                 viewMode === 'home'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
                   : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
@@ -203,7 +205,7 @@ export default function App() {
 
             <button
               onClick={() => handleOpenCollectionWithLevel()}
-              className={`min-h-[44px] px-2 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 ${
+              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
                 viewMode === 'collection'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
                   : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
@@ -211,12 +213,12 @@ export default function App() {
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span className="hidden sm:inline">Coleção 40+</span>
-              <span className="sm:hidden text-[11px]">40+</span>
+              <span className="sm:hidden text-[11px]">Coleção</span>
             </button>
 
             <button
               onClick={() => setIsTodayModalOpen(true)}
-              className="min-h-[44px] px-2 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-white border border-emerald-500/35 shadow-sm"
+              className="min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-white border border-emerald-500/35 shadow-sm shrink-0"
               title="Descobrir o treino ideal para os objetivos de hoje"
             >
               <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -226,7 +228,7 @@ export default function App() {
 
             <button
               onClick={() => setViewMode('student')}
-              className={`min-h-[44px] px-2 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 ${
+              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
                 viewMode === 'student'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
                   : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
@@ -238,8 +240,22 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setViewMode('evolution')}
+              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
+                viewMode === 'evolution'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
+              }`}
+              title="Acompanhar minha evolução e histórico de treinos concluídos"
+            >
+              <Trophy className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <span className="hidden sm:inline">Minha Evolução</span>
+              <span className="sm:hidden text-[11px]">Evolução</span>
+            </button>
+
+            <button
               onClick={() => setViewMode('editor')}
-              className={`min-h-[44px] px-2 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 ${
+              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
                 viewMode === 'editor'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
                   : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
@@ -269,6 +285,7 @@ export default function App() {
             setPlan(planToShare);
             setIsShareModalOpen(true);
           }}
+          onOpenEvolution={() => setViewMode('evolution')}
         />
       )}
 
@@ -295,10 +312,19 @@ export default function App() {
             onPreviewExercise={(ex) => setPreviewExercise(ex)}
             onBackToCatalog={() => setViewMode('home')}
             onOpenTodayRecommender={() => setIsTodayModalOpen(true)}
+            onOpenEvolution={() => setViewMode('evolution')}
           />
           {/* Integrated Floating Rest Timer for Student */}
           <RestTimer />
         </>
+      )}
+
+      {viewMode === 'evolution' && (
+        <StudentEvolutionView
+          onBackToCatalog={() => setViewMode('home')}
+          onSelectSessionToTrain={handleSelectSessionToTrain}
+          onOpenTodayRecommender={() => setIsTodayModalOpen(true)}
+        />
       )}
 
       {viewMode === 'editor' && (

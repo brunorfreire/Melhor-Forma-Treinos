@@ -321,7 +321,7 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
     });
   };
 
-  const updateExerciseField = (exId: string, field: keyof Exercise, value: string) => {
+  const updateExerciseField = <K extends keyof Exercise>(exId: string, field: K, value: Exercise[K]) => {
     if (!activeSession) return;
     const newExercises = activeSession.exercises.map(ex => {
       if (ex.id === exId) {

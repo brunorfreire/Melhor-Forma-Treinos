@@ -101,7 +101,11 @@ export function recordCompletedWorkout(
   workoutId: string, 
   workoutTitle: string, 
   category: WorkoutCollectionCategory,
-  durationMinutes: number
+  durationMinutes: number,
+  goals?: string[],
+  muscleGroups?: string[],
+  level?: string,
+  notes?: string
 ): void {
   if (typeof window === 'undefined') return;
   const history = getCompletedWorkoutsHistory();
@@ -114,7 +118,11 @@ export function recordCompletedWorkout(
     category,
     status: 'completed',
     completed_at: new Date().toISOString(),
-    duration_seconds: Math.round(durationMinutes * 60)
+    duration_seconds: Math.round(durationMinutes * 60),
+    goals: goals && goals.length > 0 ? goals : undefined,
+    muscle_groups: muscleGroups && muscleGroups.length > 0 ? muscleGroups : undefined,
+    level,
+    notes
   };
 
   const updatedHistory = [record, ...history].slice(0, 100); // mantém últimos 100
@@ -126,6 +134,20 @@ export function recordCompletedWorkout(
 
   // Remove sessão ativa pois o treino foi concluído
   clearActiveWorkoutSession();
+}
+
+/**
+ * Remove um registro de conclusão do histórico (gestão pelo aluno)
+ */
+export function removeCompletedWorkout(recordId: string): void {
+  if (typeof window === 'undefined') return;
+  const history = getCompletedWorkoutsHistory();
+  const updated = history.filter(h => h.id !== recordId);
+  try {
+    localStorage.setItem(PROGRESS_HISTORY_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Erro ao remover histórico:', e);
+  }
 }
 
 /**

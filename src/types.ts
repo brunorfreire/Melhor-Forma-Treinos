@@ -43,7 +43,7 @@ export interface WorkoutPlan {
   updatedAt?: string;
 }
 
-export type ViewMode = 'home' | 'collection' | 'student' | 'editor';
+export type ViewMode = 'home' | 'collection' | 'student' | 'evolution' | 'editor';
 
 export interface SavedStudentWorkout {
   id: string;
@@ -222,6 +222,10 @@ export interface UserProgressRecord {
   status: 'completed' | 'in_progress';
   completed_at: string;
   duration_seconds?: number;
+  goals?: string[];
+  muscle_groups?: string[];
+  level?: string;
+  notes?: string;
 }
 
 export interface UserFavoriteRecord {
@@ -293,5 +297,8 @@ export interface RecommendedWorkoutMatch {
   matchedGoalLabels: string[];
   reasons: string[];
   isTopMatch?: boolean;
+  recentlyCompleted?: boolean;
+  lastCompletedDate?: string;
+  isFresh?: boolean;
 }
 

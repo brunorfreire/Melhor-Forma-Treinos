@@ -615,13 +615,23 @@ export const MyWorkoutTodayModal: React.FC<MyWorkoutTodayModalProps> = ({
                             {w.title}
                           </h4>
 
-                          {/* Tags de objetivos correspondidos */}
+                          {/* Tags de objetivos correspondidos & histórico */}
                           <div className="flex flex-wrap gap-1 pt-0.5">
                             {match.matchedGoalLabels.slice(0, 2).map((lbl) => (
                               <span key={lbl} className="text-[9px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 px-1.5 py-0.5 rounded">
                                 ✓ {lbl}
                               </span>
                             ))}
+                            {match.isFresh && (
+                              <span className="text-[9px] font-bold text-teal-300 bg-teal-950/80 border border-teal-500/30 px-1.5 py-0.5 rounded">
+                                Inédito
+                              </span>
+                            )}
+                            {match.recentlyCompleted && (
+                              <span className="text-[9px] font-bold text-amber-300 bg-amber-950/80 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                                Feito recente
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

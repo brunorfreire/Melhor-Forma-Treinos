@@ -5,6 +5,7 @@ import {
   TodayWorkoutPreferences, 
   RecommendedWorkoutMatch 
 } from '../types';
+import { getCompletedWorkoutsHistory } from './studentProgressService';
 
 export const TODAY_GOAL_OPTIONS: TodayGoalOption[] = [
   {
@@ -148,6 +149,31 @@ export function getRecommendedWorkouts(
 ): RecommendedWorkoutMatch[] {
   if (!workouts || workouts.length === 0) return [];
 
+  const completedHistory = getCompletedWorkoutsHistory();
+  // Mapa de conclusões recentes por ID do treino
+  const historyMap = new Map<string, { lastCompletedAt: string; count: number; hoursAgo: number }>();
+  const now = Date.now();
+
+  completedHistory.forEach((rec) => {
+    if (!rec.workout_id) return;
+    const completedTime = new Date(rec.completed_at).getTime();
+    const hoursAgo = Math.max(0, (now - completedTime) / (1000 * 60 * 60));
+    const existing = historyMap.get(rec.workout_id);
+    if (!existing) {
+      historyMap.set(rec.workout_id, {
+        lastCompletedAt: rec.completed_at,
+        count: 1,
+        hoursAgo
+      });
+    } else {
+      existing.count += 1;
+      if (hoursAgo < existing.hoursAgo) {
+        existing.hoursAgo = hoursAgo;
+        existing.lastCompletedAt = rec.completed_at;
+      }
+    }
+  });
+
   const selectedGoals = prefs.goals && prefs.goals.length > 0 ? prefs.goals : (['ganhar-forca'] as TodayWorkoutGoalId[]);
 
   const matches: RecommendedWorkoutMatch[] = workouts.map((w) => {
@@ -255,8 +281,31 @@ export function getRecommendedWorkouts(
       }
     }
 
-    // Normaliza para no máximo 99% (ou 100% se for perfeita correspondência)
-    const normalizedScore = Math.min(100, Math.max(35, Math.round(score)));
+    // 5. INTEGRAÇÃO COM HISTÓRICO: Redução de repetições desnecessárias & estímulo à variedade
+    const historyEntry = historyMap.get(w.id);
+    let recentlyCompleted = false;
+    let isFresh = !historyEntry;
+    let lastCompletedDate: string | undefined = undefined;
+
+    if (historyEntry) {
+      lastCompletedDate = historyEntry.lastCompletedAt;
+      if (historyEntry.hoursAgo <= 36) {
+        // Concluído nas últimas 36 horas: reduz pontuação para abrir espaço a novas sessões
+        score -= 25;
+        recentlyCompleted = true;
+        reasons.push('Concluído nas últimas 36h (priorizando sessões inéditas)');
+      } else if (historyEntry.hoursAgo <= 72) {
+        score -= 10;
+        recentlyCompleted = true;
+      }
+    } else {
+      // Treino ainda não realizado: incentiva exploração de novos conteúdos
+      score += 5;
+      reasons.push('Inédito na sua rotina');
+    }
+
+    // Normaliza para pontuação legível de 30% a 100%
+    const normalizedScore = Math.min(100, Math.max(30, Math.round(score)));
 
     const matchedGoalLabels = matchedGoals.map(g => GOAL_LABELS[g] || g);
 
@@ -265,7 +314,10 @@ export function getRecommendedWorkouts(
       matchScore: normalizedScore,
       matchingGoals: matchedGoals,
       matchedGoalLabels,
-      reasons: reasons.slice(0, 3)
+      reasons: reasons.slice(0, 3),
+      recentlyCompleted,
+      lastCompletedDate,
+      isFresh
     };
   });
 
