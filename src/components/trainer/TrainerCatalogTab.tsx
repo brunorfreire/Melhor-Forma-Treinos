@@ -314,7 +314,7 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
                     : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-800'
                 }`}
               >
-                {col.name} (12)
+                {col.name} ({workouts.filter(w => w.category === col.id).length || 12})
               </button>
             ))}
           </div>
@@ -412,11 +412,12 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
               <div className="relative aspect-[4/3] sm:aspect-[16/10] w-full bg-slate-950 overflow-hidden">
                 <img
                   src={workout.coverImage}
-                  alt={workout.title}
-                  className="w-full h-full object-cover object-[center_25%]"
+                  alt={workout.photoAlt || workout.title}
+                  className="w-full h-full object-cover object-[center_20%] sm:object-[center_25%]"
+                  referrerPolicy="no-referrer"
                   onError={(e) => {
                     // Fallback para imagem segura caso falhe
-                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=600&q=80';
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&crop=faces,center&w=600&h=800&q=80';
                   }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
@@ -448,10 +449,20 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
                   </span>
                 </div>
 
-                {/* Level Tag Bottom Left */}
-                <span className="absolute bottom-2 left-2.5 text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/20">
-                  {workout.level}
-                </span>
+                {/* Level Tag Bottom Left & Model Demographic indicator */}
+                <div className="absolute bottom-2 left-2.5 flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/20">
+                    {workout.level}
+                  </span>
+                  {workout.modelGender && (
+                    <span 
+                      className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-900/90 text-slate-300 border border-slate-700/60 shadow-sm"
+                      title={`Identidade fotográfica: ${workout.modelGender} (${workout.modelAgeGroup || '40+'})`}
+                    >
+                      {workout.modelGender === 'feminino' ? '♀' : '♂'} {workout.modelAgeGroup || '40+'}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Workout Details */}

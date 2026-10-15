@@ -73,7 +73,10 @@ export type WorkoutCollectionCategory =
   | 'inferiores'
   | 'full_body'
   | 'cardiorespiratorio'
-  | 'mobilidade_equilibrio';
+  | 'mobilidade_equilibrio'
+  | 'peitoral-ombro-triceps'
+  | 'costas-biceps'
+  | 'costas-trapezio-biceps';
 
 export interface CollectionMeta {
   id: WorkoutCollectionCategory;
@@ -126,6 +129,9 @@ export interface CatalogWorkout {
   coverImage: string;
   status: WorkoutStatus; // 'publicado' | 'rascunho' | 'revisao'
   accessLevel: 'free' | 'premium'; // Nível de acesso comercial
+  photoAlt?: string;
+  modelGender?: 'feminino' | 'masculino';
+  modelAgeGroup?: string;
   authorTrainer?: string;
   updatedAt: string;
 }

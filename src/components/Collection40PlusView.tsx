@@ -306,9 +306,10 @@ export const Collection40PlusView: React.FC<Collection40PlusViewProps> = ({
                         >
                           <img
                             src={session.coverImage}
-                            alt={session.title}
-                            className="w-full h-full object-cover object-[center_25%] group-hover:scale-105 transition-transform duration-300"
+                            alt={session.photoAlt || session.title}
+                            className="w-full h-full object-cover object-[center_20%] sm:object-[center_25%] group-hover:scale-105 transition-transform duration-300"
                             loading="lazy"
+                            referrerPolicy="no-referrer"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
                           <div className="absolute top-1.5 left-1.5">

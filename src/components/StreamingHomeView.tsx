@@ -22,7 +22,13 @@ import {
   Lock,
   Crown,
   RotateCcw,
-  Zap
+  Zap,
+  Target,
+  Maximize2,
+  HeartPulse,
+  Trophy,
+  Award,
+  Filter
 } from 'lucide-react';
 import { WorkoutPlan, Exercise, CatalogWorkout, ActiveWorkoutSession } from '../types';
 import { 
@@ -64,6 +70,7 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('todos');
+  const [categoryGroup, setCategoryGroup] = useState<'todos' | 'divisoes' | 'pilares' | 'niveis_acesso'>('todos');
   const [selectedPreviewSession, setSelectedPreviewSession] = useState<CollectionWorkoutSession | null>(null);
 
   // Modal de Conteúdo Premium
@@ -89,8 +96,8 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
   const catalogWorkouts = useMemo(() => getAllCatalogWorkouts(), []);
 
   const allStreamSessions: CollectionWorkoutSession[] = useMemo(() => {
-    const published = catalogWorkouts.filter(w => w.status === 'publicado');
-    const catalogSessionsMapped: CollectionWorkoutSession[] = published.map(w => {
+    // Todos os 72 treinos do catálogo organizados com suas fotos e metadados individuais
+    const catalogSessionsMapped: CollectionWorkoutSession[] = catalogWorkouts.map(w => {
       const hydrated = getHydratedWorkout(w.id);
       const exercises = hydrated ? hydrated.exercises : [];
       const levelId = w.level === 'iniciante' ? 'nivel-1' : w.level === 'intermediario' ? 'nivel-2' : 'nivel-3';
@@ -112,11 +119,12 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
         targetAudience: 'Mulheres e homens 40+ buscando saúde e longevidade',
         coverImage: w.coverImage,
         exercises,
-        accessLevel: w.accessLevel || (DEFAULT_FREE_WORKOUT_IDS.includes(w.id) ? 'free' : 'premium')
+        accessLevel: w.accessLevel || (DEFAULT_FREE_WORKOUT_IDS.includes(w.id) ? 'free' : 'premium'),
+        photoAlt: w.photoAlt
       };
     });
 
-    // Mescla garantindo unicidade de IDs
+    // Mescla com a coleção Força 40+ garantindo unicidade de IDs
     const existingIds = new Set(catalogSessionsMapped.map(s => s.id));
     const additional = SESSIONS_40_PLUS.filter(s => !existingIds.has(s.id)).map(s => ({
       ...s,
@@ -129,6 +137,8 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
   const carouselRefs = {
     favoritos: useRef<HTMLDivElement>(null),
     gratuitos: useRef<HTMLDivElement>(null),
+    peitoralOmbroTriceps: useRef<HTMLDivElement>(null),
+    costasBiceps: useRef<HTMLDivElement>(null),
     nivel1: useRef<HTMLDivElement>(null),
     nivel2: useRef<HTMLDivElement>(null),
     nivel3: useRef<HTMLDivElement>(null),
@@ -162,6 +172,47 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
     setActiveSession(null);
   };
 
+  // Helpers para classificação inteligente de novas divisões musculares
+  const isPeitoralOmbroTriceps = (s: CollectionWorkoutSession): boolean => {
+    const pushKeywords = [
+      'peitoral', 'peito', 'ombro', 'tríceps', 'triceps', 'deltóide', 'deltoide', 
+      'empurrar', 'empurrada', 'supino', 'desenvolvimento', 'elevação lateral', 'elevação frontal', 'flexão'
+    ];
+    if (['w-sup-01', 'w-sup-03', 'w-sup-05', 'w-sup-06', 'w-sup-08', 'w-sup-09', 'w-sup-11', 'w-sup-12', 'w-40p-07'].includes(s.id)) {
+      return true;
+    }
+    const tMatch = pushKeywords.some(k => s.title.toLowerCase().includes(k));
+    const fMatch = pushKeywords.some(k => s.focus.toLowerCase().includes(k));
+    const oMatch = pushKeywords.some(k => s.objective.toLowerCase().includes(k));
+    const exMatch = s.exercises && s.exercises.some(e => {
+      const mg = (e.muscleGroup || '').toLowerCase();
+      const mp = (e.movementPattern || '').toLowerCase();
+      const nm = (e.name || '').toLowerCase();
+      return mp.includes('empurrar') || pushKeywords.some(k => mg.includes(k) || nm.includes(k));
+    });
+    return tMatch || fMatch || oMatch || !!exMatch;
+  };
+
+  const isCostasBiceps = (s: CollectionWorkoutSession): boolean => {
+    const pullKeywords = [
+      'costas', 'bíceps', 'biceps', 'dorsal', 'romboides', 'romboide', 'trapézio', 'trapezio',
+      'puxar', 'puxada', 'remada', 'tração', 'tracao', 'escapular', 'lat pulldown', 'crucifixo invertido', 'rosca'
+    ];
+    if (['w-sup-02', 'w-sup-03', 'w-sup-04', 'w-sup-05', 'w-sup-07', 'w-sup-08', 'w-sup-09', 'w-sup-10', 'w-sup-12', 'w-40p-07'].includes(s.id)) {
+      return true;
+    }
+    const tMatch = pullKeywords.some(k => s.title.toLowerCase().includes(k));
+    const fMatch = pullKeywords.some(k => s.focus.toLowerCase().includes(k));
+    const oMatch = pullKeywords.some(k => s.objective.toLowerCase().includes(k));
+    const exMatch = s.exercises && s.exercises.some(e => {
+      const mg = (e.muscleGroup || '').toLowerCase();
+      const mp = (e.movementPattern || '').toLowerCase();
+      const nm = (e.name || '').toLowerCase();
+      return mp.includes('puxar') || pullKeywords.some(k => mg.includes(k) || nm.includes(k));
+    });
+    return tMatch || fMatch || oMatch || !!exMatch;
+  };
+
   // Filtered sessions
   const filteredSessions = useMemo(() => {
     return allStreamSessions.filter(s => {
@@ -174,6 +225,8 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
       if (!matchesSearch) return false;
 
       if (activeFilter === 'todos') return true;
+      if (activeFilter === 'peitoral-ombro-triceps') return isPeitoralOmbroTriceps(s);
+      if (activeFilter === 'costas-biceps' || activeFilter === 'costas-trapezio-biceps' || activeFilter === 'costas-biceps-trapezio') return isCostasBiceps(s);
       if (activeFilter === 'gratis') return s.accessLevel === 'free';
       if (activeFilter === 'premium') return s.accessLevel === 'premium';
       if (activeFilter === 'nivel-1') return s.levelId === 'nivel-1';
@@ -199,6 +252,14 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
     return allStreamSessions.filter(s => s.accessLevel === 'free');
   }, [allStreamSessions]);
 
+  const peitoralOmbroTricepsSessions = useMemo(() => {
+    return allStreamSessions.filter(s => isPeitoralOmbroTriceps(s));
+  }, [allStreamSessions]);
+
+  const costasBicepsSessions = useMemo(() => {
+    return allStreamSessions.filter(s => isCostasBiceps(s));
+  }, [allStreamSessions]);
+
   const nivel1Sessions = allStreamSessions.filter(s => s.levelId === 'nivel-1');
   const nivel2Sessions = allStreamSessions.filter(s => s.levelId === 'nivel-2');
   const nivel3Sessions = allStreamSessions.filter(s => s.levelId === 'nivel-3');
@@ -208,6 +269,200 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
   const fullBodySessions = allStreamSessions.filter(s => s.id.startsWith('w-fb') || s.focus.toLowerCase().includes('full body'));
   const cardioSessions = allStreamSessions.filter(s => s.id.startsWith('w-cardio') || s.pillarId === 'condicionamento');
   const equilibrioMobilitySessions = allStreamSessions.filter(s => s.id.startsWith('w-mob') || s.pillarId === 'equilibrio' || s.pillarId === 'mobilidade');
+
+  const categoriesList = useMemo(() => [
+    {
+      id: 'todos',
+      name: 'Todos os Treinos',
+      subtitle: 'Catálogo completo 40+',
+      icon: Sparkles,
+      color: 'text-emerald-400',
+      badgeBg: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/30',
+      group: 'todos'
+    },
+    {
+      id: 'peitoral-ombro-triceps',
+      name: 'Peitoral, Ombro e Tríceps',
+      subtitle: 'Musculaturas de empurrar',
+      icon: Target,
+      color: 'text-amber-400',
+      badgeBg: 'bg-amber-500/10',
+      borderColor: 'border-amber-500/30',
+      group: 'divisoes'
+    },
+    {
+      id: 'costas-biceps',
+      name: 'Costas, Bíceps e Trapézio',
+      subtitle: 'Musculaturas de puxar',
+      icon: Maximize2,
+      color: 'text-blue-400',
+      badgeBg: 'bg-blue-500/10',
+      borderColor: 'border-blue-500/30',
+      group: 'divisoes'
+    },
+    {
+      id: 'superiores',
+      name: 'Membros Superiores',
+      subtitle: 'Tronco, postura e braços',
+      icon: Dumbbell,
+      color: 'text-teal-400',
+      badgeBg: 'bg-teal-500/10',
+      borderColor: 'border-teal-500/30',
+      group: 'divisoes'
+    },
+    {
+      id: 'inferiores',
+      name: 'Membros Inferiores',
+      subtitle: 'Pernas, glúteos e joelhos',
+      icon: Layers,
+      color: 'text-orange-400',
+      badgeBg: 'bg-orange-500/10',
+      borderColor: 'border-orange-500/30',
+      group: 'divisoes'
+    },
+    {
+      id: 'full_body',
+      name: 'Full Body Integrado',
+      subtitle: 'Corpo todo com eficiência',
+      icon: Activity,
+      color: 'text-cyan-400',
+      badgeBg: 'bg-cyan-500/10',
+      borderColor: 'border-cyan-500/30',
+      group: 'divisoes'
+    },
+    {
+      id: 'forca_40_plus',
+      name: 'Força para a Vida 40+',
+      subtitle: 'Massa magra e densidade',
+      icon: Flame,
+      color: 'text-emerald-400',
+      badgeBg: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/30',
+      group: 'pilares'
+    },
+    {
+      id: 'cardiorespiratorio',
+      name: 'Condicionamento & Fôlego',
+      subtitle: 'Cardio ativo sem impacto',
+      icon: HeartPulse,
+      color: 'text-rose-400',
+      badgeBg: 'bg-rose-500/10',
+      borderColor: 'border-rose-500/30',
+      group: 'pilares'
+    },
+    {
+      id: 'mobilidade_equilibrio',
+      name: 'Mobilidade & Equilíbrio',
+      subtitle: 'Articulações e prevenção',
+      icon: Scale,
+      color: 'text-indigo-400',
+      badgeBg: 'bg-indigo-500/10',
+      borderColor: 'border-indigo-500/30',
+      group: 'pilares'
+    },
+    {
+      id: 'gratis',
+      name: 'Treinos Gratuitos',
+      subtitle: '100% liberados',
+      icon: Sparkles,
+      color: 'text-emerald-400',
+      badgeBg: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/30',
+      group: 'niveis_acesso'
+    },
+    {
+      id: 'premium',
+      name: 'Treinos Premium',
+      subtitle: 'Catálogo VIP completo',
+      icon: Crown,
+      color: 'text-amber-400',
+      badgeBg: 'bg-amber-500/10',
+      borderColor: 'border-amber-500/30',
+      group: 'niveis_acesso'
+    },
+    {
+      id: 'nivel-1',
+      name: 'Nível 1 (Começar Bem)',
+      subtitle: 'Iniciantes e retorno seguro',
+      icon: ShieldCheck,
+      color: 'text-emerald-400',
+      badgeBg: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/30',
+      group: 'niveis_acesso'
+    },
+    {
+      id: 'nivel-2',
+      name: 'Nível 2 (Evoluir)',
+      subtitle: 'Intermediário consistente',
+      icon: Trophy,
+      color: 'text-blue-400',
+      badgeBg: 'bg-blue-500/10',
+      borderColor: 'border-blue-500/30',
+      group: 'niveis_acesso'
+    },
+    {
+      id: 'nivel-3',
+      name: 'Nível 3 (Longevidade)',
+      subtitle: 'Avançado, força e vigor',
+      icon: Award,
+      color: 'text-purple-400',
+      badgeBg: 'bg-purple-500/10',
+      borderColor: 'border-purple-500/30',
+      group: 'niveis_acesso'
+    }
+  ], []);
+
+  const categoryCounts = useMemo<Record<string, number>>(() => {
+    return {
+      todos: allStreamSessions.length,
+      'peitoral-ombro-triceps': peitoralOmbroTricepsSessions.length,
+      'costas-biceps': costasBicepsSessions.length,
+      superiores: superioresSessions.length,
+      inferiores: inferioresSessions.length,
+      full_body: fullBodySessions.length,
+      forca_40_plus: forcaSessions.length,
+      cardiorespiratorio: cardioSessions.length,
+      mobilidade_equilibrio: equilibrioMobilitySessions.length,
+      gratis: freeSessions.length,
+      premium: allStreamSessions.filter(s => s.accessLevel === 'premium').length,
+      'nivel-1': nivel1Sessions.length,
+      'nivel-2': nivel2Sessions.length,
+      'nivel-3': nivel3Sessions.length,
+    };
+  }, [
+    allStreamSessions, 
+    peitoralOmbroTricepsSessions, 
+    costasBicepsSessions, 
+    superioresSessions, 
+    inferioresSessions, 
+    fullBodySessions, 
+    forcaSessions, 
+    cardioSessions, 
+    equilibrioMobilitySessions, 
+    freeSessions, 
+    nivel1Sessions, 
+    nivel2Sessions, 
+    nivel3Sessions
+  ]);
+
+  const visibleCategories = useMemo(() => {
+    if (categoryGroup === 'todos') return categoriesList;
+    return categoriesList.filter(c => c.group === categoryGroup || c.id === 'todos');
+  }, [categoriesList, categoryGroup]);
+
+  const activeCategoryMeta = useMemo(() => {
+    return categoriesList.find(c => c.id === activeFilter) || {
+      id: activeFilter,
+      name: activeFilter,
+      subtitle: '',
+      icon: Layers,
+      color: 'text-emerald-400',
+      badgeBg: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/30',
+      group: 'todos'
+    };
+  }, [categoriesList, activeFilter]);
 
   const scrollToCatalog = () => {
     const catalogElement = document.getElementById('catalogo-treinos');
@@ -510,19 +765,22 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
       {/* ========================================================================= */}
       {/* 4. BARRA DE BUSCA E FILTROS RÁPIDOS STREAMING                             */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* 4. BARRA DE BUSCA E GRADE RESPONSIVA DE CATEGORIAS                        */}
+      {/* ========================================================================= */}
       <section id="catalogo-treinos" className="w-full max-w-7xl mx-auto px-3 sm:px-6 md:px-8 pt-4 pb-2">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
           <div>
             <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
               <Layers className="w-5 h-5 text-emerald-400" />
-              Catálogo de Treinos
+              Catálogo de Treinos 40+
             </h2>
             <p className="text-xs text-slate-400">
-              Escolha uma sessão em formato vertical 3:4 com vídeos demonstrativos para treinar agora.
+              Escolha uma divisão muscular ou programa em formato vertical 3:4 com demonstrações completas.
             </p>
           </div>
 
-          {/* Search Input */}
+          {/* Search Input - Preservado acima da navegação */}
           <div className="relative w-full md:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -530,49 +788,109 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
               placeholder="Buscar treino, foco ou exercício..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full min-h-[44px] bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl pl-9 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none transition shadow-sm"
+              className="w-full min-h-[44px] bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl pl-9 pr-9 text-xs text-white placeholder-slate-500 focus:outline-none transition shadow-sm"
+              aria-label="Buscar treinos no catálogo"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 min-h-[32px] min-w-[32px] flex items-center justify-center text-slate-400 hover:text-white"
+                aria-label="Limpar campo de busca"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Filter Chips Mobile-friendly */}
-        <div className="flex items-center gap-2 overflow-x-auto py-3 no-scrollbar text-xs">
+        {/* Abas de Navegação / Grupos de Filtros */}
+        <div className="flex items-center gap-1.5 sm:gap-2 py-3 overflow-x-auto no-scrollbar text-xs">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+            <Filter className="w-3.5 h-3.5 text-emerald-400" />
+            Filtros:
+          </span>
           {[
-            { id: 'todos', label: 'Todos os Treinos' },
-            { id: 'gratis', label: '★ Treinos Grátis (12)' },
-            { id: 'premium', label: '👑 Treinos Premium (60)' },
-            { id: 'nivel-1', label: 'Nível 1 (Começar Bem)' },
-            { id: 'nivel-2', label: 'Nível 2 (Evoluir)' },
-            { id: 'nivel-3', label: 'Nível 3 (Longevidade)' },
-            { id: 'forca_40_plus', label: 'Força 40+' },
-            { id: 'superiores', label: 'Membros Superiores' },
-            { id: 'inferiores', label: 'Membros Inferiores' },
-            { id: 'full_body', label: 'Full Body' },
-            { id: 'cardiorespiratorio', label: 'Cardio & Fôlego' },
-            { id: 'mobilidade_equilibrio', label: 'Mobilidade & Equilíbrio' }
-          ].map((f) => (
+            { id: 'todos', label: 'Todas as Categorias', count: 14 },
+            { id: 'divisoes', label: 'Divisões Musculares', count: 5 },
+            { id: 'pilares', label: 'Coleções 40+', count: 3 },
+            { id: 'niveis_acesso', label: 'Níveis & Acesso', count: 5 }
+          ].map((grp) => (
             <button
-              key={f.id}
-              onClick={() => setActiveFilter(f.id)}
-              className={`min-h-[40px] px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition border text-xs flex items-center justify-center shrink-0 active:scale-95 ${
-                activeFilter === f.id
-                  ? f.id === 'premium'
-                    ? 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-950 font-black'
-                    : 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-950 font-black'
-                  : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850 hover:text-white'
+              key={grp.id}
+              onClick={() => setCategoryGroup(grp.id as any)}
+              className={`min-h-[40px] px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all border flex items-center gap-1.5 shrink-0 active:scale-95 ${
+                categoryGroup === grp.id
+                  ? 'bg-slate-800 text-white border-emerald-500/80 shadow-sm shadow-emerald-950 font-black'
+                  : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-850'
               }`}
             >
-              {f.label}
+              <span>{grp.label}</span>
+              <span className="text-[10px] opacity-70">({grp.count})</span>
             </button>
           ))}
+        </div>
+
+        {/* Grade Responsiva de Categorias: 2 colunas no celular, 3 ou 4 em tablets/computadores */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-2.5 pt-1 pb-3">
+          {visibleCategories.map((cat) => {
+            const isSelected = activeFilter === cat.id;
+            const Icon = cat.icon;
+            const count = (categoryCounts as any)[cat.id] ?? 0;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => {
+                  setActiveFilter(cat.id);
+                  const el = document.getElementById('catalogo-treinos');
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className={`group relative text-left min-h-[52px] sm:min-h-[58px] h-auto p-2.5 sm:p-3 rounded-xl border transition-all duration-200 active:scale-[0.98] flex flex-col justify-between ${
+                  isSelected
+                    ? cat.id === 'premium'
+                      ? 'bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/30 text-white shadow-lg shadow-amber-950/50'
+                      : 'bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/30 text-white shadow-lg shadow-emerald-950/50'
+                    : 'bg-slate-900/90 border-slate-800 hover:bg-slate-850 hover:border-slate-700 text-slate-300'
+                }`}
+                aria-pressed={isSelected}
+                aria-label={`Filtrar por ${cat.name}, ${count} treinos disponíveis`}
+              >
+                <div className="flex items-start justify-between gap-1.5 w-full">
+                  <div className="flex items-center gap-1.5">
+                    <div className={`p-1.5 rounded-lg shrink-0 ${
+                      isSelected 
+                        ? (cat.id === 'premium' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300') 
+                        : cat.badgeBg + ' ' + cat.color
+                    }`}>
+                      <Icon className="w-4 h-4 shrink-0" />
+                    </div>
+                    {isSelected && (
+                      <span className={`w-2 h-2 rounded-full animate-pulse ${cat.id === 'premium' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                    isSelected
+                      ? (cat.id === 'premium' ? 'bg-amber-500/30 text-amber-200 border-amber-400/50' : 'bg-emerald-500/30 text-emerald-200 border-emerald-400/50')
+                      : 'bg-slate-800/90 text-slate-400 border-slate-700/60'
+                  }`}>
+                    {count} {count === 1 ? 'treino' : 'treinos'}
+                  </span>
+                </div>
+
+                <div className="mt-1.5 w-full">
+                  <div className={`text-xs font-bold leading-snug break-words ${isSelected ? 'text-white font-extrabold' : 'text-slate-200'}`}>
+                    {cat.name}
+                  </div>
+                  {cat.subtitle && (
+                    <div className={`text-[10px] leading-tight line-clamp-1 mt-0.5 ${isSelected ? (cat.id === 'premium' ? 'text-amber-200/80' : 'text-emerald-200/80') : 'text-slate-400'}`}>
+                      {cat.subtitle}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -582,26 +900,35 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
       {searchTerm.trim() !== '' || activeFilter !== 'todos' ? (
         /* Grid de Resultados Filtrados: 2 colunas no celular conforme Regra 5 */
         <section className="w-full max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs text-slate-400">
-              {filteredSessions.length} treino(s) em formato 3:4 encontrado(s)
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-400 font-semibold">
+                Filtro ativo:
+              </span>
+              <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {activeCategoryMeta.name}
+              </span>
+              <span className="text-xs text-slate-400">
+                • {filteredSessions.length} {filteredSessions.length === 1 ? 'treino vertical 3:4 encontrado' : 'treinos verticais 3:4 encontrados'}
+              </span>
+            </div>
             <button
               onClick={() => { setSearchTerm(''); setActiveFilter('todos'); }}
-              className="text-xs text-emerald-400 font-bold hover:underline"
+              className="text-xs text-emerald-400 font-bold hover:underline flex items-center gap-1.5 self-start sm:self-auto min-h-[36px] px-2"
             >
-              Limpar filtros
+              <RotateCcw className="w-3.5 h-3.5" />
+              Limpar filtros (Ver todos)
             </button>
           </div>
 
           {filteredSessions.length === 0 ? (
             <div className="p-10 text-center bg-slate-900/40 border border-slate-800 rounded-2xl">
-              <p className="text-slate-400 text-sm">Nenhum treino encontrado para sua busca.</p>
+              <p className="text-slate-400 text-sm">Nenhum treino encontrado para esta categoria ou termo de busca.</p>
               <button
                 onClick={() => { setSearchTerm(''); setActiveFilter('todos'); }}
                 className="mt-3 text-xs text-emerald-400 font-bold hover:underline"
               >
-                Ver todos os treinos
+                Ver todos os 72 treinos
               </button>
             </div>
           ) : (
@@ -773,6 +1100,42 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
             cardImgErrors={cardImgErrors}
             onCardImgError={handleCardImgError}
             onOpenLevel={() => onOpenCollection()}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={handleToggleFavorite}
+          />
+
+          {/* Carrossel 7.1: PEITORAL, OMBRO E TRÍCEPS (NOVA DIVISÃO EMPURRAR) */}
+          <CarouselRow
+            title="PEITORAL, OMBRO E TRÍCEPS | FORÇA DE EMPURRAR"
+            subtitle="Supinos, desenvolvimentos e estabilização de escápulas e braços firmes"
+            badge="Divisão Empurrar"
+            sessions={peitoralOmbroTricepsSessions}
+            scrollRef={carouselRefs.peitoralOmbroTriceps}
+            onScrollLeft={() => scrollCarousel(carouselRefs.peitoralOmbroTriceps, 'left')}
+            onScrollRight={() => scrollCarousel(carouselRefs.peitoralOmbroTriceps, 'right')}
+            onPreviewSession={(s) => setSelectedPreviewSession(s)}
+            onStartSession={(s) => handleStartWorkout(s)}
+            onLockClick={(s) => handleOpenLock(s)}
+            cardImgErrors={cardImgErrors}
+            onCardImgError={handleCardImgError}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={handleToggleFavorite}
+          />
+
+          {/* Carrossel 7.2: COSTAS, BÍCEPS E TRAPÉZIO (NOVA DIVISÃO PUXAR) */}
+          <CarouselRow
+            title="COSTAS, BÍCEPS E TRAPÉZIO | FORÇA DE PUXAR"
+            subtitle="Remadas, puxadas e sustentação dorsal para postura alinhada e alívio de tensões"
+            badge="Divisão Puxar"
+            sessions={costasBicepsSessions}
+            scrollRef={carouselRefs.costasBiceps}
+            onScrollLeft={() => scrollCarousel(carouselRefs.costasBiceps, 'left')}
+            onScrollRight={() => scrollCarousel(carouselRefs.costasBiceps, 'right')}
+            onPreviewSession={(s) => setSelectedPreviewSession(s)}
+            onStartSession={(s) => handleStartWorkout(s)}
+            onLockClick={(s) => handleOpenLock(s)}
+            cardImgErrors={cardImgErrors}
+            onCardImgError={handleCardImgError}
             favoriteIds={favoriteIds}
             onToggleFavorite={handleToggleFavorite}
           />
@@ -1187,15 +1550,18 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({
         {!hasError ? (
           <img
             src={session.coverImage}
-            alt={session.title}
-            className="w-full h-full object-cover object-[center_25%] transition-transform duration-500 group-hover:scale-105"
+            alt={session.photoAlt || session.title}
+            className="w-full h-full object-cover object-[center_20%] sm:object-[center_25%] transition-transform duration-500 group-hover:scale-105"
             referrerPolicy="no-referrer"
             loading="lazy"
             onError={onError}
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-slate-900 via-emerald-950/30 to-slate-950 flex items-center justify-center p-4">
-            <Dumbbell className="w-10 h-10 text-emerald-400 opacity-60" />
+          <div className="w-full h-full bg-gradient-to-br from-slate-900 via-emerald-950/40 to-slate-950 flex flex-col items-center justify-center p-3 text-center">
+            <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mb-1.5 shadow-sm">
+              <Dumbbell className="w-4 h-4 text-emerald-400" />
+            </div>
+            <span className="text-[10px] text-emerald-300 font-semibold line-clamp-1">{session.focus}</span>
           </div>
         )}
 

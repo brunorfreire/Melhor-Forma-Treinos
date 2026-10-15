@@ -34,6 +34,7 @@ export interface CollectionWorkoutSession {
   coverImage: string;
   exercises: Exercise[];
   accessLevel?: 'free' | 'premium';
+  photoAlt?: string;
 }
 
 export const PILLARS_40_PLUS: CollectionPillar[] = [
@@ -145,7 +146,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Força Funcional Básica & Adaptação',
     objective: 'Fortalecer os principais grupos musculares com movimentos seguros, ativando pernas, costas e core para o dia a dia.',
     targetAudience: 'Iniciantes ou pessoas voltando a treinar após período de pausa.',
-    coverImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n1-s1-ex1',
@@ -217,7 +218,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Tônus Muscular & Vitalidade Global',
     objective: 'Estimular os grandes grupos musculares de maneira integrada para mais energia e firmeza postural.',
     targetAudience: 'Quem busca sair do sedentarismo com treino agradável e eficiente.',
-    coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n1-s2-ex1',
@@ -283,7 +284,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Estabilidade Postural & Controle Neuromotor',
     objective: 'Desenvolver a firmeza nos pés, tornozelos e quadris, trazendo segurança para caminhar, subir degraus e descer rampas.',
     targetAudience: 'Pessoas que sentem insegurança no caminhar ou buscam prevenir tropeços e quedas.',
-    coverImage: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n1-s3-ex1',
@@ -348,7 +349,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Saúde Articular & Alívio de Tensões',
     objective: 'Soltar a musculatura das costas, ombros e quadris, devolvendo mobilidade fluida sem impacto.',
     targetAudience: 'Quem passa muito tempo sentada ou sente rigidez matinal nas articulações.',
-    coverImage: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n1-s4-ex1',
@@ -411,7 +412,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Capacidade Cardiorrespiratória & Queima Ativa',
     objective: 'Estimular o coração, circulação e respiração em ritmo adaptado, sem impacto nocivo nas articulações.',
     targetAudience: 'Iniciantes que desejam melhorar o fôlego e disposição para as atividades cotidianas.',
-    coverImage: 'https://images.unsplash.com/photo-1571731956672-f2b94d7dd0cb?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1571731956672-f2b94d7dd0cb?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n1-s5-ex1',
@@ -476,7 +477,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Grandes Cadeias Musculares & Densidade Óssea',
     objective: 'Treinamento resistido integrado para pernas, costas, peito e core com progressão consciente.',
     targetAudience: 'Praticantes regulares que desejam consolidar força e autonomia funcional.',
-    coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n2-s1-ex1',
@@ -543,7 +544,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Postura, Coluna Saudável e Braços Firmes',
     objective: 'Equilibrar a musculatura dos ombros e costas para melhorar a postura e dar firmeza aos braços.',
     targetAudience: 'Quem busca postura elegante e força nos membros superiores.',
-    coverImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n2-s2-ex1',
@@ -610,7 +611,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Coxas, Glúteos e Estabilidade de Joelho',
     objective: 'Fortalecer pernas e quadris para subir escadas, carregar compras e caminhar com agilidade e zero dores articulares.',
     targetAudience: 'Quem busca pernas firmes e sustentação articular para o dia a dia.',
-    coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n2-s3-ex1',
@@ -677,7 +678,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Coordenação Dinâmica, Agilidade e Core',
     objective: 'Desafiar a estabilidade corporal em movimento dinâmico, treinando reflexos neuromotores rápidos e seguros.',
     targetAudience: 'Praticantes que querem melhorar a resposta reflexa e a segurança em terrenos irregulares.',
-    coverImage: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n2-s4-ex1',
@@ -740,7 +741,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Capacidade Aeróbia Intervalada & Fôlego',
     objective: 'Aumentar a resistência cardiovascular com intervalos controlados que potencializam o gasto calórico e a oxigenação celular.',
     targetAudience: 'Quem deseja emagrecimento sustentável e fôlego renovado.',
-    coverImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n2-s5-ex1',
@@ -806,7 +807,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Recrutamento Neuromuscular & Vigor Físico',
     objective: 'Preservar fibras musculares rápidas (tipo II), densidade mineral óssea e capacidade de produzir força com controle absoluto.',
     targetAudience: 'Alunas(os) maduras(os) com condicionamento intermediário a avançado.',
-    coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n3-s1-ex1',
@@ -873,7 +874,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Amplitude Articular Avançada & Força Isométrica',
     objective: 'Integrar mobilidade tridimensional e estabilidade dinâmica em padrões motores desafiadores.',
     targetAudience: 'Pessoas com boa mobilidade que querem desafiar o controle motor fino.',
-    coverImage: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n3-s2-ex1',
@@ -938,7 +939,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Eficiência Mitocondrial & Queima Sustentável',
     objective: 'Combinação de exercícios de força e estímulos cardiovasculares para máxima vitalidade e saúde celular.',
     targetAudience: 'Quem busca treino dinâmico com ritmo e gasto calórico elevado.',
-    coverImage: 'https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n3-s3-ex1',
@@ -1003,7 +1004,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Anti-Sarcopenia & Potência de Membros Inferiores',
     objective: 'Construir pernas sólidas e glúteos fortes para sustentar a coluna lombar e garantir independência física por décadas.',
     targetAudience: 'Praticantes focadas em firmeza muscular e longevidade articular.',
-    coverImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n3-s4-ex1',
@@ -1070,7 +1071,7 @@ export const SESSIONS_40_PLUS: CollectionWorkoutSession[] = [
     focus: 'Força Funcional Global & Autonomia Integral',
     objective: 'Uma sessão completa e revigorante que integra empurrar, puxar, agachar e estabilizar o core.',
     targetAudience: 'Quem deseja o melhor treino geral de corpo inteiro para vitalidade e saúde aos 40+.',
-    coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
+    coverImage: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&crop=faces,center&w=800&h=1067&q=80',
     exercises: [
       {
         id: 'n3-s5-ex1',
