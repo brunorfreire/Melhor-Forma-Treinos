@@ -152,6 +152,8 @@ export function getHydratedWorkout(workoutId: string): HydratedWorkoutSession | 
       cautions: central ? central.cautions : '',
       youtubeId: central ? central.youtubeId : undefined,
       videoUrl: central ? central.videoUrl : undefined,
+      fallbackMediaUrl: central ? central.fallbackMediaUrl : undefined,
+      mediaType: central ? central.mediaType : undefined,
       thumbnailUrl: central?.thumbnailUrl || '',
       hasNoVideo: central ? central.videoValidationStatus === 'sem_video' : false,
       movementPattern: central?.movementPattern,

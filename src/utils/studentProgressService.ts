@@ -4,10 +4,21 @@ import {
   StudentProgressStats, 
   UserProgressRecord 
 } from '../types';
+import { getStoredSession } from './supabaseClient';
 
 const FAVORITES_KEY = 'mf_user_favorites_v1';
 const ACTIVE_SESSION_KEY = 'mf_active_workout_session_v1';
 const PROGRESS_HISTORY_KEY = 'mf_user_progress_history_v1';
+
+function getProgressStorageKey(): string {
+  try {
+    const session = getStoredSession();
+    if (session?.user?.id) {
+      return `${PROGRESS_HISTORY_KEY}_${session.user.id}`;
+    }
+  } catch {}
+  return PROGRESS_HISTORY_KEY;
+}
 
 /**
  * Retorna a lista de IDs de treinos favoritados
@@ -105,14 +116,29 @@ export function recordCompletedWorkout(
   goals?: string[],
   muscleGroups?: string[],
   level?: string,
-  notes?: string
-): void {
-  if (typeof window === 'undefined') return;
+  notes?: string,
+  source: 'app_session' | 'manual_entry' = 'app_session'
+): boolean {
+  if (typeof window === 'undefined') return false;
   const history = getCompletedWorkoutsHistory();
   
+  // Prevenção contra registros duplicados por cliques repetidos (janela de 60 segundos para o mesmo treino)
+  const isDuplicate = history.some(h => {
+    if (h.workout_id !== workoutId) return false;
+    const diff = Math.abs(Date.now() - new Date(h.completed_at).getTime());
+    return diff < 60 * 1000;
+  });
+  if (isDuplicate) {
+    console.warn('[studentProgressService] Registro duplicado ignorado (menos de 60s da última conclusão).');
+    return false;
+  }
+
+  const session = getStoredSession();
+  const userId = session?.user?.id || 'local_student';
+
   const record: UserProgressRecord = {
     id: `prog-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    user_id: 'local_student',
+    user_id: userId,
     workout_id: workoutId,
     workout_title: workoutTitle,
     category,
@@ -122,18 +148,20 @@ export function recordCompletedWorkout(
     goals: goals && goals.length > 0 ? goals : undefined,
     muscle_groups: muscleGroups && muscleGroups.length > 0 ? muscleGroups : undefined,
     level,
-    notes
+    notes,
+    source
   };
 
   const updatedHistory = [record, ...history].slice(0, 100); // mantém últimos 100
   try {
-    localStorage.setItem(PROGRESS_HISTORY_KEY, JSON.stringify(updatedHistory));
+    localStorage.setItem(getProgressStorageKey(), JSON.stringify(updatedHistory));
   } catch (e) {
     console.error('Erro ao salvar histórico de conclusão:', e);
   }
 
   // Remove sessão ativa pois o treino foi concluído
   clearActiveWorkoutSession();
+  return true;
 }
 
 /**
@@ -144,7 +172,7 @@ export function removeCompletedWorkout(recordId: string): void {
   const history = getCompletedWorkoutsHistory();
   const updated = history.filter(h => h.id !== recordId);
   try {
-    localStorage.setItem(PROGRESS_HISTORY_KEY, JSON.stringify(updated));
+    localStorage.setItem(getProgressStorageKey(), JSON.stringify(updated));
   } catch (e) {
     console.error('Erro ao remover histórico:', e);
   }
@@ -156,7 +184,12 @@ export function removeCompletedWorkout(recordId: string): void {
 export function getCompletedWorkoutsHistory(): UserProgressRecord[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(PROGRESS_HISTORY_KEY);
+    const key = getProgressStorageKey();
+    let raw = localStorage.getItem(key);
+    // Se logado e chave específica ainda vazia, herda dados locais para não perder histórico
+    if (!raw && key !== PROGRESS_HISTORY_KEY) {
+      raw = localStorage.getItem(PROGRESS_HISTORY_KEY);
+    }
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];

@@ -51,6 +51,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   // Track completed exercise IDs per session (local state in browser session)
   const [completedExerciseIds, setCompletedExerciseIds] = useState<Record<string, boolean>>({});
   const [showFinishedModal, setShowFinishedModal] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [lastRecordedSummary, setLastRecordedSummary] = useState<{
     title: string;
     muscles: string[];
@@ -97,12 +98,15 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   const isSessionFinished = totalExercises > 0 && completedCount === totalExercises;
 
   const handleCompleteWorkout = (notifyWhatsApp: boolean = false) => {
+    if (isCompleting) return;
+    setIsCompleting(true);
+
     // Extrai grupos musculares únicos trabalhados
     const uniqueMuscles = Array.from(new Set(activeSession.exercises.map(e => e.muscleGroup).filter(Boolean)));
     const goalsList = plan.goal ? [plan.goal] : ['Força e Autonomia 40+'];
     const estimatedMinutes = Math.max(15, Math.min(50, (completedCount || totalExercises) * 3));
 
-    // Registra no histórico real de conclusão
+    // Registra no histórico real de conclusão com tag de fonte 'app_session'
     recordCompletedWorkout(
       plan.id,
       activeSession.name,
@@ -110,7 +114,9 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
       estimatedMinutes,
       goalsList,
       uniqueMuscles,
-      'iniciante'
+      'iniciante',
+      undefined,
+      'app_session'
     );
     clearActiveWorkoutSession();
 
@@ -120,6 +126,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
       duration: estimatedMinutes
     });
     setShowFinishedModal(true);
+    setTimeout(() => setIsCompleting(false), 2000);
 
     if (notifyWhatsApp) {
       const text = formatStudentFinishedMessage(plan, activeSession);
@@ -490,10 +497,11 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
 
             <button
               onClick={() => handleCompleteWorkout(true)}
-              className="w-full min-h-[46px] py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
+              disabled={isCompleting}
+              className="w-full min-h-[46px] py-3 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 active:scale-98 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
             >
               <Send className="w-4 h-4" />
-              <span>Concluir e Avisar Treinador no WhatsApp</span>
+              <span>{isCompleting ? 'Registrando...' : 'Concluir e Avisar Treinador no WhatsApp'}</span>
             </button>
           </div>
         )}
@@ -512,10 +520,11 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
 
           <button
             onClick={() => handleCompleteWorkout(false)}
-            className="min-h-[46px] flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-98 text-white font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/60"
+            disabled={isCompleting}
+            className="min-h-[46px] flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 active:scale-98 text-white font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/60"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Concluir Treino</span>
+            <span>{isCompleting ? 'Salvando...' : 'Concluir Treino'}</span>
           </button>
         </div>
       </div>
@@ -542,7 +551,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
 
             <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-left space-y-1.5 text-xs text-slate-300">
               <div className="flex justify-between text-slate-400 text-[11px]">
-                <span>Duração registrada:</span>
+                <span>Duração estimada registrada:</span>
                 <span className="font-bold text-white">{lastRecordedSummary.duration} min</span>
               </div>
               {lastRecordedSummary.muscles.length > 0 && (

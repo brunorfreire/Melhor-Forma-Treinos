@@ -18,7 +18,8 @@ import {
   RotateCcw,
   ShieldCheck,
   ChevronRight,
-  Zap
+  Zap,
+  Edit3
 } from 'lucide-react';
 import { UserProgressRecord, WorkoutPlan, CatalogWorkout } from '../types';
 import { 
@@ -45,6 +46,7 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [selectedManualWorkoutId, setSelectedManualWorkoutId] = useState<string>('');
   const [allWorkouts, setAllWorkouts] = useState<CatalogWorkout[]>([]);
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
   const loadData = () => {
     const hist = getCompletedWorkoutsHistory();
@@ -78,10 +80,11 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
 
   const handleManualRecord = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedManualWorkoutId) return;
+    if (!selectedManualWorkoutId || isSubmittingManual) return;
 
     const workout = allWorkouts.find(w => w.id === selectedManualWorkoutId);
     if (workout) {
+      setIsSubmittingManual(true);
       recordCompletedWorkout(
         workout.id,
         workout.title,
@@ -89,9 +92,12 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
         parseInt(workout.duration.match(/\d+/)?.[0] || '30', 10),
         [workout.objective],
         workout.equipments,
-        workout.level
+        workout.level,
+        undefined,
+        'manual_entry'
       );
       loadData();
+      setIsSubmittingManual(false);
       setIsManualModalOpen(false);
       setSelectedManualWorkoutId('');
     }
@@ -220,7 +226,7 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
 
           <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between shadow-lg">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-semibold">Tempo em Movimento</span>
+              <span className="text-xs font-semibold">Tempo estimado em treinos concluídos</span>
               <Clock className="w-4 h-4 text-teal-400" />
             </div>
             <div className="mt-3">
@@ -229,7 +235,7 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
               </span>
               <span className="text-xs text-slate-400 ml-1">minutos</span>
             </div>
-            <span className="text-[10px] text-teal-300 font-medium mt-1">Investidos na sua saúde</span>
+            <span className="text-[10px] text-teal-300 font-medium mt-1">Estimativa das sessões realizadas</span>
           </div>
 
           <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between shadow-lg">
@@ -335,8 +341,17 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
                             {formatDate(item.completed_at)}
                           </span>
                           <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800 text-emerald-300 font-semibold">
-                            {durationMin} min
+                            {durationMin} min estimados
                           </span>
+                          {item.source === 'manual_entry' ? (
+                            <span className="text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <Edit3 className="w-2.5 h-2.5" /> Registro Manual
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <Play className="w-2.5 h-2.5 fill-current" /> Sessão no App
+                            </span>
+                          )}
                           {item.level && (
                             <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800 text-slate-400 capitalize">
                               {item.level}
@@ -390,12 +405,17 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
           )}
         </section>
 
-        {/* Aviso de Transparência Ética */}
-        <div className="p-3.5 rounded-2xl bg-slate-900/40 border border-slate-800 flex items-start gap-2.5 text-slate-400 text-xs">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-          <p className="leading-relaxed">
-            <strong className="text-slate-300 font-semibold">Princípio de Saúde Real:</strong> O Melhor Forma Play não exibe contadores de calorias artificiais. Nosso foco é tempo real de estímulo motor, constância e evolução na qualidade de vida com autonomia acima dos 40 anos.
-          </p>
+        {/* Aviso de Transparência Ética & Armazenamento Local */}
+        <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-start gap-3 text-slate-400 text-xs shadow-sm">
+          <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+          <div className="space-y-1.5">
+            <p className="leading-relaxed">
+              <strong className="text-slate-200 font-bold">Princípio de Saúde Real 40+:</strong> O Melhor Forma Play não exibe contadores de calorias artificiais. Nosso foco é tempo estimado de estímulo motor, constância prática e preservação muscular para autonomia diária acima dos 40 anos.
+            </p>
+            <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-800/80 pt-1.5">
+              <strong className="text-slate-300 font-semibold">Armazenamento Local no Dispositivo:</strong> Seus dados de treinos concluídos são gravados com segurança no navegador deste aparelho. Ao trocar de celular ou computador sem login em nuvem, o histórico local não é transferido automaticamente.
+            </p>
+          </div>
         </div>
 
       </main>

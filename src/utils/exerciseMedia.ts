@@ -3,16 +3,44 @@ import { extractYouTubeId, resolveExerciseYouTubeId, buildYouTubeEmbedUrl } from
 import { MUSCLEWIKI_CATALOG } from '../data/muscleWikiExercises';
 import { CENTRAL_EXERCISES, getCentralExerciseById } from '../data/centralExercises';
 
+export type MediaDisplayType = 'image' | 'video' | 'youtube' | 'none';
+
 export interface ExerciseMediaDetails {
-  hasVideo: boolean;
+  hasVideo: boolean; // Mantido para compatibilidade com código existente
+  hasMedia: boolean;
   isValidated: boolean;
   status: 'validado' | 'pendente' | 'sem_video';
+  mediaType: MediaDisplayType;
+  primaryUrl: string | null;
+  fallbackUrl: string | null;
   videoId: string | null;
   videoUrl: string | null;
   embedUrl: string | null;
   thumbnailUrl: string | null;
   instructions: string;
   cautions: string;
+}
+
+/**
+ * Normaliza caminhos de assets locais de acordo com o base path configurado no Vite
+ * Suporta deployment na raiz, subdiretórios ou Hostinger
+ */
+export function resolveAssetUrl(rawUrl?: string | null): string | null {
+  if (!rawUrl) return null;
+  const url = rawUrl.trim();
+  if (!url) return null;
+  // URLs absolutas externas (http/https), data URLs e blobs permanecem intocadas
+  if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  // Normaliza caminhos públicos locais respeitando import.meta.env.BASE_URL
+  const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL)
+    ? import.meta.env.BASE_URL
+    : '/';
+  
+  const cleanPath = url.replace(/^\/+/, '');
+  const cleanBase = base.endsWith('/') ? base : `${base}/`;
+  return `${cleanBase}${cleanPath}`;
 }
 
 /**
@@ -142,38 +170,71 @@ export function resolveExerciseMedia(exercise: Exercise): ExerciseMediaDetails {
     const fallbackCautions = fallbackGuidance.cautions || '';
     return {
       hasVideo: false,
+      hasMedia: false,
       isValidated: false,
       status: 'sem_video',
+      mediaType: 'none',
+      primaryUrl: null,
+      fallbackUrl: null,
       videoId: null,
       videoUrl: null,
       embedUrl: null,
-      thumbnailUrl: exercise.thumbnailUrl?.trim() || centralMatch?.thumbnailUrl || null,
+      thumbnailUrl: resolveAssetUrl(exercise.thumbnailUrl?.trim() || centralMatch?.thumbnailUrl || null),
       instructions: exercise.instructions?.trim() || centralMatch?.instructions || exercise.notes?.trim() || fallbackTip,
       cautions: exercise.cautions?.trim() || centralMatch?.cautions || fallbackCautions
     };
   }
 
-  // 1. Determina o vídeo com correspondência exata
-  const explicitUrlOrId = exercise.videoUrl || exercise.youtubeId || exercise.youtubeUrl || centralMatch?.youtubeId || centralMatch?.videoUrl;
-  let videoId = extractYouTubeId(explicitUrlOrId);
+  // 1. Identificação de mídia direta (WebP, GIF, MP4, WebM) vs Embed de YouTube
+  const explicitMediaUrl = exercise.videoUrl || centralMatch?.videoUrl;
+  const explicitFallbackUrl = exercise.fallbackMediaUrl || centralMatch?.fallbackMediaUrl;
+  const explicitYoutubeId = exercise.youtubeId || centralMatch?.youtubeId || exercise.youtubeUrl;
 
-  if (!videoId) {
-    // Busca na biblioteca central ou mapa de correspondência técnica exata
-    videoId = resolveExerciseYouTubeId(
-      exercise.name,
-      explicitUrlOrId,
-      exercise.muscleGroup
-    );
+  let mediaType: MediaDisplayType = 'none';
+  let primaryUrl: string | null = null;
+  let fallbackUrl: string | null = null;
+  let videoId: string | null = null;
+  let embedUrl: string | null = null;
+
+  // A. Arquivos de imagem animada (WebP ou GIF)
+  if (explicitMediaUrl && /\.(webp|gif|png|jpe?g|avif|svg)(\?.*)?$/i.test(explicitMediaUrl)) {
+    mediaType = 'image';
+    primaryUrl = resolveAssetUrl(explicitMediaUrl);
+    fallbackUrl = resolveAssetUrl(explicitFallbackUrl);
+  } 
+  // B. Arquivos de vídeo direto (MP4, WebM)
+  else if (explicitMediaUrl && /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(explicitMediaUrl)) {
+    mediaType = 'video';
+    primaryUrl = resolveAssetUrl(explicitMediaUrl);
+    fallbackUrl = resolveAssetUrl(explicitFallbackUrl);
+  } 
+  // C. Demonstrações em YouTube (embed protegido)
+  else {
+    videoId = extractYouTubeId(explicitYoutubeId || explicitMediaUrl);
+    if (!videoId) {
+      // Busca na biblioteca central ou mapa de correspondência técnica exata
+      videoId = resolveExerciseYouTubeId(
+        exercise.name,
+        explicitYoutubeId || explicitMediaUrl,
+        exercise.muscleGroup
+      );
+    }
+
+    if (videoId) {
+      mediaType = 'youtube';
+      primaryUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      embedUrl = buildYouTubeEmbedUrl(videoId, true);
+    }
   }
 
-  // 2. Determina o status de validação (Regra obrigatória: Validado, Pendente ou Sem Vídeo)
-  let rawStatus: VideoValidationStatus = 
+  // 2. Determina o status de validação
+  const rawStatus: VideoValidationStatus = 
     exercise.videoValidationStatus || 
     centralMatch?.videoValidationStatus || 
-    (videoId ? 'validado' : 'sem_video');
+    (mediaType !== 'none' ? 'validado' : 'sem_video');
 
   let status: 'validado' | 'pendente' | 'sem_video' = 'sem_video';
-  if (!videoId || rawStatus === 'sem_video') {
+  if (mediaType === 'none' || rawStatus === 'sem_video') {
     status = 'sem_video';
   } else if (rawStatus === 'pendente_revisao' || (rawStatus as string) === 'pendente') {
     status = 'pendente';
@@ -181,17 +242,19 @@ export function resolveExerciseMedia(exercise: Exercise): ExerciseMediaDetails {
     status = 'validado';
   }
 
-  const isValidated = status === 'validado' && !!videoId;
-  const hasVideo = !!videoId;
-  const embedUrl = videoId ? buildYouTubeEmbedUrl(videoId, true) : null;
-  const videoUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : (exercise.videoUrl || null);
+  const isValidated = status === 'validado' && mediaType !== 'none';
+  const hasVideo = mediaType !== 'none';
+  const hasMedia = mediaType !== 'none';
+  const videoUrl = primaryUrl || (exercise.videoUrl || null);
 
   // 3. Determina a miniatura oficial
   let thumbnailUrl: string | null = null;
   if (exercise.thumbnailUrl && exercise.thumbnailUrl.trim().length > 5) {
-    thumbnailUrl = exercise.thumbnailUrl.trim();
-  } else if (centralMatch?.thumbnailUrl) {
-    thumbnailUrl = centralMatch.thumbnailUrl;
+    thumbnailUrl = resolveAssetUrl(exercise.thumbnailUrl.trim());
+  } else if (centralMatch?.thumbnailUrl && centralMatch.thumbnailUrl.trim().length > 5) {
+    thumbnailUrl = resolveAssetUrl(centralMatch.thumbnailUrl.trim());
+  } else if (mediaType === 'image' && primaryUrl) {
+    thumbnailUrl = primaryUrl;
   } else if (videoId) {
     thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
   }
@@ -217,8 +280,12 @@ export function resolveExerciseMedia(exercise: Exercise): ExerciseMediaDetails {
 
   return {
     hasVideo,
+    hasMedia,
     isValidated,
     status,
+    mediaType,
+    primaryUrl,
+    fallbackUrl,
     videoId,
     videoUrl,
     embedUrl,

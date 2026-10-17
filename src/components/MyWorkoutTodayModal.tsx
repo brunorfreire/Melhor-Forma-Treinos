@@ -546,7 +546,7 @@ export const MyWorkoutTodayModal: React.FC<MyWorkoutTodayModalProps> = ({
               </div>
 
               {/* Grid Vertical 3:4 de Cards Recomendados */}
-              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
                 {topMatches.map((match, index) => {
                   const w = match.workout;
                   const isLocked = w.accessLevel === 'premium';

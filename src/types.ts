@@ -21,6 +21,8 @@ export interface Exercise {
   equipment?: string;
   videoValidationStatus?: VideoValidationStatus;
   licenseSource?: string;
+  fallbackMediaUrl?: string;
+  mediaType?: 'image' | 'video' | 'youtube' | 'none';
 }
 
 export interface WorkoutSession {
@@ -104,8 +106,10 @@ export interface CentralExercise {
   cautions: string; // Cuidados e contraindicações relevantes
   externalId?: string; // ID externo (ex: MuscleWiki ID oficial)
   thumbnailUrl?: string; // URL ou referência da miniatura
-  videoUrl?: string; // URL direta de vídeo licenciado (mp4/webm)
+  videoUrl?: string; // URL direta de vídeo licenciado (mp4/webm) ou mídia animada local (webp/gif)
+  fallbackMediaUrl?: string; // URL de fallback caso a mídia primária falhe (ex: GIF de fallback para WebP)
   youtubeId?: string; // Código/ID de vídeo do YouTube curado
+  mediaType?: 'image' | 'video' | 'youtube' | 'none';
   licenseSource: 'original' | 'youtube_curated' | 'musclewiki_licensed' | 'manual';
   videoValidationStatus: VideoValidationStatus; // 'validado' | 'pendente_revisao' | 'sem_video'
   demonstratorInfo?: {
@@ -226,6 +230,7 @@ export interface UserProgressRecord {
   muscle_groups?: string[];
   level?: string;
   notes?: string;
+  source?: 'app_session' | 'manual_entry';
 }
 
 export interface UserFavoriteRecord {

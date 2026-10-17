@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { 
   X, 
   Dumbbell, 
@@ -23,9 +23,30 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ exercise
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  if (!exercise) return null;
+  const media = exercise ? resolveExerciseMedia(exercise) : null;
+  const [currentImageSrc, setCurrentImageSrc] = useState<string | null>(media?.primaryUrl || null);
+  const [imageFailed, setImageFailed] = useState(false);
 
-  const media = resolveExerciseMedia(exercise);
+  useEffect(() => {
+    if (media?.primaryUrl) {
+      setCurrentImageSrc(media.primaryUrl);
+      setImageFailed(false);
+    } else {
+      setCurrentImageSrc(null);
+      setImageFailed(false);
+    }
+  }, [exercise?.id, media?.primaryUrl]);
+
+  if (!exercise || !media) return null;
+
+  const handleImageError = () => {
+    // Se o WebP falhar e houver GIF de fallback original, tenta uma única vez sem loop
+    if (media.fallbackUrl && currentImageSrc !== media.fallbackUrl) {
+      setCurrentImageSrc(media.fallbackUrl);
+    } else {
+      setImageFailed(true);
+    }
+  };
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -108,12 +129,36 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ exercise
           </div>
         </div>
 
-        {/* Video Player or Fallback Container */}
+        {/* Video / Animated Media Player / Fallback Container */}
         <div 
           ref={containerRef}
           className="relative w-full aspect-video bg-black border-b border-slate-800 flex items-center justify-center overflow-hidden"
         >
-          {media.hasVideo && media.embedUrl ? (
+          {media.mediaType === 'image' && currentImageSrc && !imageFailed ? (
+            <div className="relative w-full h-full flex items-center justify-center bg-black/95 p-1 select-none">
+              <img
+                src={currentImageSrc}
+                alt={`Demonstração técnica: ${exercise.name}`}
+                className="max-h-full max-w-full object-contain rounded-lg motion-reduce:transform-none"
+                loading="eager"
+                decoding="async"
+                onError={handleImageError}
+              />
+              <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded border border-slate-700/60 text-[9px] font-mono text-emerald-400 font-bold uppercase tracking-wider pointer-events-none">
+                {currentImageSrc.endsWith('.gif') ? 'GIF 40+' : 'WebP 40+'}
+              </div>
+            </div>
+          ) : media.mediaType === 'video' && media.primaryUrl ? (
+            <video
+              src={media.primaryUrl}
+              controls
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-contain bg-black"
+            />
+          ) : media.mediaType === 'youtube' && media.embedUrl ? (
             <iframe
               src={media.embedUrl}
               title={`Demonstração técnica: ${exercise.name}`}
@@ -127,10 +172,14 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ exercise
                 <VideoOff className="w-6 h-6" />
               </div>
               <p className="text-xs font-semibold text-slate-300">
-                Nenhum vídeo demonstrativo vinculado a este exercício.
+                {imageFailed 
+                  ? 'Arquivo demonstrativo não localizado no servidor.' 
+                  : 'Nenhum vídeo demonstrativo vinculado a este exercício.'}
               </p>
               <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-                Consulte as orientações técnicas e cuidados de postura descritos abaixo.
+                {imageFailed
+                  ? 'Consulte as orientações técnicas e cuidados de postura descritos abaixo.'
+                  : 'Consulte as orientações técnicas e cuidados de postura descritos abaixo.'}
               </p>
             </div>
           )}

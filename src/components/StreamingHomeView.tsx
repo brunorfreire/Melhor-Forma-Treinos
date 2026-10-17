@@ -697,7 +697,7 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                   </span>
                   <span className="text-xs text-slate-400">
                     {progressStats.completedWorkoutsCount > 0 
-                      ? `${progressStats.completedWorkoutsCount} treinos concluídos • ${progressStats.totalTrainingMinutes} min em movimento`
+                      ? `${progressStats.completedWorkoutsCount} treinos concluídos • ${progressStats.totalTrainingMinutes} min estimados em treinos concluídos`
                       : 'Sem treinos registrados ainda • Comece hoje sua jornada'}
                   </span>
                 </div>

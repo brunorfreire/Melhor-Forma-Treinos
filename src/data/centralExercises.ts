@@ -68,10 +68,12 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     difficulty: 'intermediario',
     instructions: 'Afaste os pés além da largura dos ombros com as pontas rodadas para fora em 45°. Segure o halter com as duas mãos estendidas para baixo e desça mantendo os joelhos na direção da ponta dos pés.',
     cautions: 'Foque na ativação de adutores e glúteos na subida sem hiperestender a lombar.',
-    youtubeId: 'Wk28E4V57_Y',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=400&q=80',
-    licenseSource: 'youtube_curated',
+    videoUrl: '/exercises/agachamento-sumo-halter.webp',
+    fallbackMediaUrl: '/exercises/agachamento-sumo-halter.gif',
+    thumbnailUrl: '/exercises/agachamento-sumo-halter.webp',
+    licenseSource: 'original',
     videoValidationStatus: 'validado',
+    mediaType: 'image',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
@@ -166,10 +168,12 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     difficulty: 'intermediario',
     instructions: 'Na posição de ponte, estenda uma das pernas no ar. Eleve os quadris sustentando todo o esforço na perna de apoio, alinhando a pelve sem deixar tombar.',
     cautions: 'Excelente para corrigir assimetrias de força e fortalecer a estabilidade do quadril.',
-    youtubeId: 'wPM8icPu6H8',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=400&q=80',
-    licenseSource: 'youtube_curated',
-    videoValidationStatus: 'pendente_revisao',
+    videoUrl: '/exercises/elevacao-pelvica-unilateral.webp',
+    fallbackMediaUrl: '/exercises/elevacao-pelvica-unilateral.gif',
+    thumbnailUrl: '/exercises/elevacao-pelvica-unilateral.webp',
+    licenseSource: 'original',
+    videoValidationStatus: 'validado',
+    mediaType: 'image',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
@@ -213,10 +217,12 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     difficulty: 'iniciante',
     instructions: 'Deite de bruços na máquina, almofada logo acima do calcanhar. Puxe o peso flexionando as pernas em direção aos glúteos sem levantar os quadris do banco.',
     cautions: 'Controle a descida do peso (fase excêntrica) em 2 a 3 segundos.',
-    youtubeId: 'ELOCsoDSmrg',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=400&q=80',
-    licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado'
+    videoUrl: '/exercises/mesa-flexora.webp',
+    fallbackMediaUrl: '/exercises/mesa-flexora.gif',
+    thumbnailUrl: '/exercises/mesa-flexora.webp',
+    licenseSource: 'original',
+    videoValidationStatus: 'validado',
+    mediaType: 'image'
   },
   {
     id: 'ex-cadeira-flexora',
@@ -279,10 +285,11 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     difficulty: 'iniciante',
     instructions: 'Apoie as mãos em um banco ou superfície firme, corpo em linha reta da cabeça aos calcanhares. Flexione os cotovelos aproximando o peito da borda e empurre de volta.',
     cautions: 'Excelente adaptação para quem está construindo força de empurrar sem sobrecarregar punhos ou ombros.',
-    youtubeId: 'IODxDxX7oi4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=400&q=80',
-    licenseSource: 'youtube_curated',
+    videoUrl: '/exercises/flexao-braco-inclinada.webp',
+    thumbnailUrl: '/exercises/flexao-braco-inclinada.webp',
+    licenseSource: 'original',
     videoValidationStatus: 'validado',
+    mediaType: 'image',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
@@ -345,10 +352,12 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     difficulty: 'intermediario',
     instructions: 'Incline o tronco a 45° com quadris recuados e coluna alinhada. Puxe ambos os halteres simultaneamente em direção ao umbigo, aproximando as escápulas.',
     cautions: 'Mantenha o abdômen contraído para proteger a região lombar.',
-    youtubeId: '6TSP138827w',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=400&q=80',
-    licenseSource: 'youtube_curated',
+    videoUrl: '/exercises/remada-curvada-halteres.webp',
+    fallbackMediaUrl: '/exercises/remada-curvada-halteres.gif',
+    thumbnailUrl: '/exercises/remada-curvada-halteres.webp',
+    licenseSource: 'original',
     videoValidationStatus: 'validado',
+    mediaType: 'image',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
@@ -529,10 +538,12 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     difficulty: 'intermediario',
     instructions: 'Segure um halter com as duas mãos acima da cabeça. Flexione os cotovelos descendo o peso atrás da cabeça e retorne estendendo os braços.',
     cautions: 'Evite se tiver restrição de mobilidade escapular ou dor no ombro.',
-    youtubeId: '_gsUokN_Abg',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=400&q=80',
-    licenseSource: 'youtube_curated',
-    videoValidationStatus: 'validado'
+    videoUrl: '/exercises/triceps-frances-halter.webp',
+    fallbackMediaUrl: '/exercises/triceps-frances-halter.gif',
+    thumbnailUrl: '/exercises/triceps-frances-halter.webp',
+    licenseSource: 'original',
+    videoValidationStatus: 'validado',
+    mediaType: 'image'
   },
   {
     id: 'ex-triceps-banco-mergulho',
@@ -732,10 +743,12 @@ export const CENTRAL_EXERCISES: CentralExercise[] = [
     difficulty: 'iniciante',
     instructions: 'Coloque o pé inteiro sobre o degrau firme. Suba estendendo a perna líder e retorne com controle com a mesma perna ou alternando.',
     cautions: 'Não deixe o calcanhar pendurado para fora do degrau.',
-    youtubeId: '3z_pWqK6g6A',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=400&q=80',
-    licenseSource: 'youtube_curated',
-    videoValidationStatus: 'pendente_revisao',
+    videoUrl: '/exercises/subida-step-degrau.webp',
+    fallbackMediaUrl: '/exercises/subida-step-degrau.gif',
+    thumbnailUrl: '/exercises/subida-step-degrau.webp',
+    licenseSource: 'original',
+    videoValidationStatus: 'validado',
+    mediaType: 'image',
     demonstratorInfo: { gender: 'feminino', targetAgeGroup: '40+' }
   },
   {
