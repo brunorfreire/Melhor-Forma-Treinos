@@ -1,9 +1,10 @@
 import { Exercise, VideoValidationStatus } from '../types';
 import { extractYouTubeId, resolveExerciseYouTubeId, buildYouTubeEmbedUrl } from './youtube';
+import { extractVimeoId, buildVimeoEmbedUrl } from './vimeo';
 import { MUSCLEWIKI_CATALOG } from '../data/muscleWikiExercises';
 import { CENTRAL_EXERCISES, getCentralExerciseById } from '../data/centralExercises';
 
-export type MediaDisplayType = 'image' | 'video' | 'youtube' | 'none';
+export type MediaDisplayType = 'image' | 'video' | 'youtube' | 'vimeo' | 'none';
 
 export interface ExerciseMediaDetails {
   hasVideo: boolean; // Mantido para compatibilidade com código existente
@@ -29,8 +30,8 @@ export function resolveAssetUrl(rawUrl?: string | null): string | null {
   if (!rawUrl) return null;
   const url = rawUrl.trim();
   if (!url) return null;
-  // URLs absolutas externas (http/https), data URLs e blobs permanecem intocadas
-  if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) {
+  // URLs absolutas externas (http/https), data URLs, blobs e indexeddb permanecem intocadas
+  if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('indexeddb://')) {
     return url;
   }
   // Normaliza caminhos públicos locais respeitando import.meta.env.BASE_URL
@@ -189,6 +190,7 @@ export function resolveExerciseMedia(exercise: Exercise): ExerciseMediaDetails {
   const explicitMediaUrl = exercise.videoUrl || centralMatch?.videoUrl;
   const explicitFallbackUrl = exercise.fallbackMediaUrl || centralMatch?.fallbackMediaUrl;
   const explicitYoutubeId = exercise.youtubeId || centralMatch?.youtubeId || exercise.youtubeUrl;
+  const explicitVimeoId = exercise.vimeoId || centralMatch?.vimeoId || exercise.vimeoUrl;
 
   let mediaType: MediaDisplayType = 'none';
   let primaryUrl: string | null = null;
@@ -196,20 +198,40 @@ export function resolveExerciseMedia(exercise: Exercise): ExerciseMediaDetails {
   let videoId: string | null = null;
   let embedUrl: string | null = null;
 
-  // A. Arquivos de imagem animada (WebP ou GIF)
-  if (explicitMediaUrl && /\.(webp|gif|png|jpe?g|avif|svg)(\?.*)?$/i.test(explicitMediaUrl)) {
+  // A. Arquivos locais de upload em IndexedDB
+  if (explicitMediaUrl && explicitMediaUrl.startsWith('indexeddb://')) {
+    const isVideo = exercise.mediaType === 'video' || centralMatch?.mediaType === 'video';
+    mediaType = isVideo ? 'video' : 'image';
+    primaryUrl = explicitMediaUrl;
+    fallbackUrl = resolveAssetUrl(explicitFallbackUrl);
+  }
+  // B. Arquivos de imagem animada (WebP ou GIF)
+  else if (explicitMediaUrl && /\.(webp|gif|png|jpe?g|avif|svg)(\?.*)?$/i.test(explicitMediaUrl)) {
     mediaType = 'image';
     primaryUrl = resolveAssetUrl(explicitMediaUrl);
     fallbackUrl = resolveAssetUrl(explicitFallbackUrl);
   } 
-  // B. Arquivos de vídeo direto (MP4, WebM)
+  // C. Arquivos de vídeo direto (MP4, WebM)
   else if (explicitMediaUrl && /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(explicitMediaUrl)) {
     mediaType = 'video';
     primaryUrl = resolveAssetUrl(explicitMediaUrl);
     fallbackUrl = resolveAssetUrl(explicitFallbackUrl);
   } 
-  // C. Demonstrações em YouTube (embed protegido)
-  else {
+  // D. Demonstrações do Vimeo
+  else if (
+    explicitVimeoId || 
+    (explicitMediaUrl && (explicitMediaUrl.includes('vimeo.com') || exercise.mediaType === 'vimeo'))
+  ) {
+    const vId = extractVimeoId(explicitVimeoId || explicitMediaUrl);
+    if (vId) {
+      mediaType = 'vimeo';
+      videoId = vId;
+      primaryUrl = `https://vimeo.com/${vId}`;
+      embedUrl = buildVimeoEmbedUrl(vId, true);
+    }
+  }
+  // E. Demonstrações em YouTube (embed protegido)
+  if (mediaType === 'none') {
     videoId = extractYouTubeId(explicitYoutubeId || explicitMediaUrl);
     if (!videoId) {
       // Busca na biblioteca central ou mapa de correspondência técnica exata

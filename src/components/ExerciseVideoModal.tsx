@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Exercise } from '../types';
 import { resolveExerciseMedia } from '../utils/exerciseMedia';
+import { resolveIndexedDbMediaUrl } from '../utils/mediaStorageService';
 
 interface ExerciseVideoModalProps {
   exercise: Exercise | null;
@@ -24,18 +25,41 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ exercise
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const media = exercise ? resolveExerciseMedia(exercise) : null;
-  const [currentImageSrc, setCurrentImageSrc] = useState<string | null>(media?.primaryUrl || null);
+  const [currentImageSrc, setCurrentImageSrc] = useState<string | null>(null);
+  const [currentVideoSrc, setCurrentVideoSrc] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
+    let isCancelled = false;
     if (media?.primaryUrl) {
-      setCurrentImageSrc(media.primaryUrl);
-      setImageFailed(false);
+      if (media.primaryUrl.startsWith('indexeddb://')) {
+        resolveIndexedDbMediaUrl(media.primaryUrl).then((resolved) => {
+          if (!isCancelled) {
+            if (media.mediaType === 'video') {
+              setCurrentVideoSrc(resolved);
+            } else {
+              setCurrentImageSrc(resolved);
+            }
+            setImageFailed(false);
+          }
+        });
+      } else {
+        if (media.mediaType === 'video') {
+          setCurrentVideoSrc(media.primaryUrl);
+        } else {
+          setCurrentImageSrc(media.primaryUrl);
+        }
+        setImageFailed(false);
+      }
     } else {
       setCurrentImageSrc(null);
+      setCurrentVideoSrc(null);
       setImageFailed(false);
     }
-  }, [exercise?.id, media?.primaryUrl]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [exercise?.id, media?.primaryUrl, media?.mediaType]);
 
   if (!exercise || !media) return null;
 
@@ -148,9 +172,9 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ exercise
                 {currentImageSrc.endsWith('.gif') ? 'GIF 40+' : 'WebP 40+'}
               </div>
             </div>
-          ) : media.mediaType === 'video' && media.primaryUrl ? (
+          ) : media.mediaType === 'video' && (currentVideoSrc || media.primaryUrl) ? (
             <video
-              src={media.primaryUrl}
+              src={currentVideoSrc || media.primaryUrl!}
               controls
               autoPlay
               muted
@@ -164,6 +188,14 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ exercise
               title={`Demonstração técnica: ${exercise.name}`}
               className="w-full h-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+              allowFullScreen
+            />
+          ) : media.mediaType === 'vimeo' && media.embedUrl ? (
+            <iframe
+              src={media.embedUrl}
+              title={`Demonstração técnica: ${exercise.name}`}
+              className="w-full h-full border-0"
+              allow="autoplay; fullscreen; picture-in-picture"
               allowFullScreen
             />
           ) : (

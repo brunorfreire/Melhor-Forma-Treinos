@@ -28,7 +28,8 @@ import {
   HeartPulse,
   Trophy,
   Award,
-  Filter
+  Filter,
+  AlertCircle
 } from 'lucide-react';
 import { WorkoutPlan, Exercise, CatalogWorkout, ActiveWorkoutSession } from '../types';
 import { 
@@ -127,6 +128,9 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                w.category === 'cardiorespiratorio' ? 'Condicionamento' :
                w.category === 'mobilidade_equilibrio' ? 'Mobilidade & Equilíbrio' : 'Força 40+',
         objective: w.objective,
+        description: w.description,
+        category: w.category,
+        equipments: w.equipments || [],
         targetAudience: 'Mulheres e homens 40+ buscando saúde e longevidade',
         coverImage: w.coverImage,
         exercises,
@@ -224,33 +228,152 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
     return tMatch || fMatch || oMatch || !!exMatch;
   };
 
-  // Filtered sessions
+  // Stopwords comuns em português que não devem inviabilizar buscas compostas
+  const PORTUGUESE_STOPWORDS = useMemo(() => new Set([
+    'de', 'com', 'para', 'em', 'no', 'na', 'nos', 'nas', 'do', 'da', 'dos', 'das', 'e', 'o', 'a', 'os', 'as', 'um', 'uma'
+  ]), []);
+
+  // Normaliza textos para busca flexível, sem diferenciar maiúsculas/minúsculas, acentuação e pontuação
+  const normalizeSearchText = (text?: string | null): string => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  /**
+   * Avalia se um treino corresponde aos termos da pesquisa em tempo real por:
+   * - Nome do treino
+   * - Nome dos exercícios presentes no treino
+   * - Grupo muscular (do treino e dos exercícios centrais e secundários)
+   * - Equipamento utilizado (halter, halteres, colchonete, elástico, peso corporal, etc.)
+   * - Categoria, coleção e termos sinônimos
+   * - Nível de dificuldade (iniciante, intermediário, avançado, nível 1, 2, 3)
+   * - Nível de acesso (grátis / premium)
+   */
+  const matchesSearchQuery = (s: CollectionWorkoutSession, rawQuery: string): boolean => {
+    const query = normalizeSearchText(rawQuery);
+    if (!query) return true;
+
+    const levelLabels = 
+      s.levelId === 'nivel-1' ? 'iniciante nivel 1 nivel-1 facil comecar bem adaptacao retorno seguro' :
+      s.levelId === 'nivel-2' ? 'intermediario nivel 2 nivel-2 medio evoluir tonus consistencia' :
+      'avancado nivel 3 nivel-3 dificil longevidade vigor potencia';
+
+    const categoryLabels =
+      s.id.startsWith('w-sup') ? 'superiores membros superiores tronco bracos peito costas ombro ombros biceps triceps trapezio escapular puxar empurrar' :
+      s.id.startsWith('w-inf') ? 'inferiores membros inferiores pernas gluteos quadriceps coxas posterior panturrilhas joelhos estabilidade articular agachar agachamento' :
+      s.id.startsWith('w-fb') ? 'full body integrado full body corpo todo global eficiencia geral' :
+      s.id.startsWith('w-cardio') ? 'cardio cardiorespiratorio condicionamento folego queima ativo aerobico saude cardiaca disposicao' :
+      s.id.startsWith('w-mob') ? 'mobilidade equilibrio articulacoes postura prevencao alongamento flexibilidade alivio dores' :
+      'forca 40+ forca para a vida massa magra densidade ossea musculacao hipertrofia tonus';
+
+    const accessLabels = (s.accessLevel === 'free' || ['w-sup-01', 'w-sup-06', 'w-inf-01', 'w-fb-01', 'w-cardio-01', 'w-mob-01'].includes(s.id))
+      ? 'gratis gratuito 100% liberado free livre acesso imediato'
+      : 'premium vip exclusivo';
+
+    const texts: string[] = [
+      s.title,
+      s.focus,
+      s.objective,
+      (s as any).description || '',
+      levelLabels,
+      categoryLabels,
+      accessLabels
+    ];
+
+    if ((s as any).equipments && Array.isArray((s as any).equipments)) {
+      texts.push(...(s as any).equipments);
+      if ((s as any).equipments.some((eq: string) => normalizeSearchText(eq).includes('halter'))) {
+        texts.push('halter halteres dumbbell dumbell');
+      }
+    }
+
+    if (s.exercises && s.exercises.length > 0) {
+      s.exercises.forEach((e) => {
+        if (e.name) texts.push(e.name);
+        if (e.muscleGroup) texts.push(e.muscleGroup);
+        if (e.equipment) {
+          texts.push(e.equipment);
+          if (normalizeSearchText(e.equipment).includes('halter')) {
+            texts.push('halter halteres dumbbell dumbell');
+          }
+        }
+        if (e.movementPattern) texts.push(e.movementPattern);
+        if (e.notes) texts.push(e.notes);
+        if (e.instructions) texts.push(e.instructions);
+        if ((e as any).centralDetails) {
+          const cd = (e as any).centralDetails;
+          if (cd.name) texts.push(cd.name);
+          if (cd.nameEn) texts.push(cd.nameEn);
+          if (cd.muscleGroup) texts.push(cd.muscleGroup);
+          if (cd.equipment) {
+            texts.push(cd.equipment);
+            if (normalizeSearchText(cd.equipment).includes('halter')) {
+              texts.push('halter halteres dumbbell dumbell');
+            }
+          }
+          if (cd.secondaryMuscles && Array.isArray(cd.secondaryMuscles)) {
+            texts.push(...cd.secondaryMuscles);
+          }
+        }
+        if ((e as any).alternativeDetails) {
+          const ad = (e as any).alternativeDetails;
+          if (ad.name) texts.push(ad.name);
+        }
+      });
+    }
+
+    const unified = normalizeSearchText(texts.join(' '));
+
+    // Correspondência direta da frase completa digitada
+    if (unified.includes(query)) return true;
+
+    // Correspondência de termos individuais significativos (sem stopwords bloqueadoras)
+    const queryTokens = query.split(/\s+/).filter(Boolean);
+    const significantTokens = queryTokens.filter(t => !PORTUGUESE_STOPWORDS.has(t));
+    const tokensToCheck = significantTokens.length > 0 ? significantTokens : queryTokens;
+
+    return tokensToCheck.every(tok => unified.includes(tok));
+  };
+
+  /**
+   * Avalia compatibilidade com o filtro de categorias selecionado
+   */
+  const matchesCategoryFilter = (s: CollectionWorkoutSession, filterId: string): boolean => {
+    if (filterId === 'todos') return true;
+    if (filterId === 'peitoral-ombro-triceps') return isPeitoralOmbroTriceps(s);
+    if (filterId === 'costas-biceps' || filterId === 'costas-trapezio-biceps' || filterId === 'costas-biceps-trapezio') return isCostasBiceps(s);
+    if (filterId === 'gratis') return s.accessLevel === 'free';
+    if (filterId === 'premium') return s.accessLevel === 'premium';
+    if (filterId === 'nivel-1') return s.levelId === 'nivel-1';
+    if (filterId === 'nivel-2') return s.levelId === 'nivel-2';
+    if (filterId === 'nivel-3') return s.levelId === 'nivel-3';
+    if (filterId === 'forca_40_plus') return s.id.startsWith('w-40p') || s.pillarId === 'forca' || (s as any).category === 'forca_40_plus';
+    if (filterId === 'superiores') return s.id.startsWith('w-sup') || s.focus.toLowerCase().includes('superior') || (s as any).category === 'superiores';
+    if (filterId === 'inferiores') return s.id.startsWith('w-inf') || s.focus.toLowerCase().includes('inferior') || (s as any).category === 'inferiores';
+    if (filterId === 'full_body') return s.id.startsWith('w-fb') || s.focus.toLowerCase().includes('full body') || (s as any).category === 'full_body';
+    if (filterId === 'cardiorespiratorio') return s.id.startsWith('w-cardio') || s.pillarId === 'condicionamento' || (s as any).category === 'cardiorespiratorio';
+    if (filterId === 'mobilidade_equilibrio') return s.id.startsWith('w-mob') || s.pillarId === 'mobilidade' || s.pillarId === 'equilibrio' || (s as any).category === 'mobilidade_equilibrio';
+    return true;
+  };
+
+  // Resultados globais no catálogo completo para o termo pesquisado
+  const globalSearchMatches = useMemo(() => {
+    if (!searchTerm.trim()) return allStreamSessions;
+    return allStreamSessions.filter(s => matchesSearchQuery(s, searchTerm));
+  }, [allStreamSessions, searchTerm]);
+
+  // Sessões filtradas combinando pesquisa em tempo real e categoria ativa
   const filteredSessions = useMemo(() => {
     return allStreamSessions.filter(s => {
-      const matchesSearch = searchTerm.trim() === '' || 
-        s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.focus.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.objective.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.exercises.some(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
+      const matchesSearch = matchesSearchQuery(s, searchTerm);
       if (!matchesSearch) return false;
-
-      if (activeFilter === 'todos') return true;
-      if (activeFilter === 'peitoral-ombro-triceps') return isPeitoralOmbroTriceps(s);
-      if (activeFilter === 'costas-biceps' || activeFilter === 'costas-trapezio-biceps' || activeFilter === 'costas-biceps-trapezio') return isCostasBiceps(s);
-      if (activeFilter === 'gratis') return s.accessLevel === 'free';
-      if (activeFilter === 'premium') return s.accessLevel === 'premium';
-      if (activeFilter === 'nivel-1') return s.levelId === 'nivel-1';
-      if (activeFilter === 'nivel-2') return s.levelId === 'nivel-2';
-      if (activeFilter === 'nivel-3') return s.levelId === 'nivel-3';
-      if (activeFilter === 'forca_40_plus') return s.id.startsWith('w-40p') || s.pillarId === 'forca';
-      if (activeFilter === 'superiores') return s.id.startsWith('w-sup') || s.focus.toLowerCase().includes('superior');
-      if (activeFilter === 'inferiores') return s.id.startsWith('w-inf') || s.focus.toLowerCase().includes('inferior');
-      if (activeFilter === 'full_body') return s.id.startsWith('w-fb') || s.focus.toLowerCase().includes('full body');
-      if (activeFilter === 'cardiorespiratorio') return s.id.startsWith('w-cardio') || s.pillarId === 'condicionamento';
-      if (activeFilter === 'mobilidade_equilibrio') return s.id.startsWith('w-mob') || s.pillarId === 'mobilidade' || s.pillarId === 'equilibrio';
-
-      return true;
+      return matchesCategoryFilter(s, activeFilter);
     });
   }, [allStreamSessions, searchTerm, activeFilter]);
 
@@ -425,37 +548,36 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
   ], []);
 
   const categoryCounts = useMemo<Record<string, number>>(() => {
+    const isSearching = searchTerm.trim() !== '';
+    const pool = isSearching ? globalSearchMatches : allStreamSessions;
+
     return {
-      todos: allStreamSessions.length,
-      'peitoral-ombro-triceps': peitoralOmbroTricepsSessions.length,
-      'costas-biceps': costasBicepsSessions.length,
-      superiores: superioresSessions.length,
-      inferiores: inferioresSessions.length,
-      full_body: fullBodySessions.length,
-      forca_40_plus: forcaSessions.length,
-      cardiorespiratorio: cardioSessions.length,
-      mobilidade_equilibrio: equilibrioMobilitySessions.length,
-      gratis: freeSessions.length,
-      premium: allStreamSessions.filter(s => s.accessLevel === 'premium').length,
-      'nivel-1': nivel1Sessions.length,
-      'nivel-2': nivel2Sessions.length,
-      'nivel-3': nivel3Sessions.length,
+      todos: pool.length,
+      'peitoral-ombro-triceps': pool.filter(s => isPeitoralOmbroTriceps(s)).length,
+      'costas-biceps': pool.filter(s => isCostasBiceps(s)).length,
+      superiores: pool.filter(s => matchesCategoryFilter(s, 'superiores')).length,
+      inferiores: pool.filter(s => matchesCategoryFilter(s, 'inferiores')).length,
+      full_body: pool.filter(s => matchesCategoryFilter(s, 'full_body')).length,
+      forca_40_plus: pool.filter(s => matchesCategoryFilter(s, 'forca_40_plus')).length,
+      cardiorespiratorio: pool.filter(s => matchesCategoryFilter(s, 'cardiorespiratorio')).length,
+      mobilidade_equilibrio: pool.filter(s => matchesCategoryFilter(s, 'mobilidade_equilibrio')).length,
+      gratis: pool.filter(s => s.accessLevel === 'free').length,
+      premium: pool.filter(s => s.accessLevel === 'premium').length,
+      'nivel-1': pool.filter(s => s.levelId === 'nivel-1').length,
+      'nivel-2': pool.filter(s => s.levelId === 'nivel-2').length,
+      'nivel-3': pool.filter(s => s.levelId === 'nivel-3').length,
     };
-  }, [
-    allStreamSessions, 
-    peitoralOmbroTricepsSessions, 
-    costasBicepsSessions, 
-    superioresSessions, 
-    inferioresSessions, 
-    fullBodySessions, 
-    forcaSessions, 
-    cardioSessions, 
-    equilibrioMobilitySessions, 
-    freeSessions, 
-    nivel1Sessions, 
-    nivel2Sessions, 
-    nivel3Sessions
-  ]);
+  }, [allStreamSessions, globalSearchMatches, searchTerm]);
+
+  // Contagens dinâmicas para os grupos de categorias
+  const categoryGroupsList = useMemo(() => {
+    return [
+      { id: 'todos', label: 'Todas as Categorias', count: categoriesList.length },
+      { id: 'divisoes', label: 'Divisões Musculares', count: categoriesList.filter(c => c.group === 'divisoes').length },
+      { id: 'pilares', label: 'Coleções 40+', count: categoriesList.filter(c => c.group === 'pilares').length },
+      { id: 'niveis_acesso', label: 'Níveis & Acesso', count: categoriesList.filter(c => c.group === 'niveis_acesso').length }
+    ];
+  }, [categoriesList]);
 
   const visibleCategories = useMemo(() => {
     if (categoryGroup === 'todos') return categoriesList;
@@ -890,18 +1012,54 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
           </div>
         </div>
 
+        {/* Feedback em tempo real diretamente abaixo do buscador */}
+        {searchTerm.trim() !== '' && (
+          <div className="mt-3 p-3 sm:p-3.5 bg-slate-900/90 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-lg shadow-emerald-950/20">
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <span className="text-slate-400 font-medium">Buscando por:</span>
+              <span className="font-black text-white px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center gap-1.5">
+                <span>"{searchTerm}"</span>
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="hover:text-emerald-300 ml-1 text-slate-400 hover:text-white"
+                  aria-label="Limpar termo de busca"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+              <span className="text-slate-300 font-bold">
+                • {globalSearchMatches.length} {globalSearchMatches.length === 1 ? 'treino encontrado no catálogo' : 'treinos encontrados no catálogo'}
+                {activeFilter !== 'todos' && ` (${filteredSessions.length} nesta categoria)`}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto text-xs">
+              {activeFilter !== 'todos' && (
+                <button
+                  onClick={() => setActiveFilter('todos')}
+                  className="text-emerald-400 font-bold hover:underline flex items-center gap-1 py-1"
+                >
+                  Ver no catálogo todo ({globalSearchMatches.length})
+                </button>
+              )}
+              <button
+                onClick={() => { setSearchTerm(''); setActiveFilter('todos'); }}
+                className="text-slate-400 hover:text-white font-medium flex items-center gap-1 py-1 pl-2 border-l border-slate-800"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Limpar busca</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Abas de Navegação / Grupos de Filtros */}
         <div className="flex items-center gap-1.5 sm:gap-2 py-3 overflow-x-auto no-scrollbar text-xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
             <Filter className="w-3.5 h-3.5 text-emerald-400" />
             Filtros:
           </span>
-          {[
-            { id: 'todos', label: 'Todas as Categorias', count: 14 },
-            { id: 'divisoes', label: 'Divisões Musculares', count: 5 },
-            { id: 'pilares', label: 'Coleções 40+', count: 3 },
-            { id: 'niveis_acesso', label: 'Níveis & Acesso', count: 5 }
-          ].map((grp) => (
+          {categoryGroupsList.map((grp) => (
             <button
               key={grp.id}
               onClick={() => setCategoryGroup(grp.id as any)}
@@ -938,7 +1096,9 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                     ? cat.id === 'premium'
                       ? 'bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/30 text-white shadow-lg shadow-amber-950/50'
                       : 'bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/30 text-white shadow-lg shadow-emerald-950/50'
-                    : 'bg-slate-900/90 border-slate-800 hover:bg-slate-850 hover:border-slate-700 text-slate-300'
+                    : count === 0 && searchTerm.trim() !== ''
+                      ? 'bg-slate-900/40 border-slate-800/60 text-slate-500 opacity-45 hover:opacity-80'
+                      : 'bg-slate-900/90 border-slate-800 hover:bg-slate-850 hover:border-slate-700 text-slate-300'
                 }`}
                 aria-pressed={isSelected}
                 aria-label={`Filtrar por ${cat.name}, ${count} treinos disponíveis`}
@@ -948,7 +1108,9 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                     <div className={`p-1.5 rounded-lg shrink-0 ${
                       isSelected 
                         ? (cat.id === 'premium' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300') 
-                        : cat.badgeBg + ' ' + cat.color
+                        : count === 0 && searchTerm.trim() !== ''
+                          ? 'bg-slate-800/40 text-slate-500'
+                          : cat.badgeBg + ' ' + cat.color
                     }`}>
                       <Icon className="w-4 h-4 shrink-0" />
                     </div>
@@ -959,7 +1121,9 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
                     isSelected
                       ? (cat.id === 'premium' ? 'bg-amber-500/30 text-amber-200 border-amber-400/50' : 'bg-emerald-500/30 text-emerald-200 border-emerald-400/50')
-                      : 'bg-slate-800/90 text-slate-400 border-slate-700/60'
+                      : count === 0 && searchTerm.trim() !== ''
+                        ? 'bg-slate-900/50 text-slate-600 border-slate-800/60'
+                        : 'bg-slate-800/90 text-slate-400 border-slate-700/60'
                   }`}>
                     {count} {count === 1 ? 'treino' : 'treinos'}
                   </span>
@@ -990,32 +1154,84 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-slate-400 font-semibold">
-                Filtro ativo:
+                {searchTerm.trim() ? 'Busca em tempo real:' : 'Filtro ativo:'}
               </span>
-              <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {activeCategoryMeta.name}
-              </span>
+              {searchTerm.trim() && (
+                <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  "{searchTerm}"
+                </span>
+              )}
+              {activeFilter !== 'todos' && (
+                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700">
+                  {activeCategoryMeta.name}
+                </span>
+              )}
               <span className="text-xs text-slate-400">
-                • {filteredSessions.length} {filteredSessions.length === 1 ? 'treino vertical 3:4 encontrado' : 'treinos verticais 3:4 encontrados'}
+                • {filteredSessions.length} {filteredSessions.length === 1 ? 'treino encontrado' : 'treinos encontrados'}
               </span>
             </div>
-            <button
-              onClick={() => { setSearchTerm(''); setActiveFilter('todos'); }}
-              className="text-xs text-emerald-400 font-bold hover:underline flex items-center gap-1.5 self-start sm:self-auto min-h-[36px] px-2"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Limpar filtros (Ver todos)
-            </button>
-          </div>
-
-          {filteredSessions.length === 0 ? (
-            <div className="p-10 text-center bg-slate-900/40 border border-slate-800 rounded-2xl">
-              <p className="text-slate-400 text-sm">Nenhum treino encontrado para esta categoria ou termo de busca.</p>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              {searchTerm.trim() && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="text-xs text-slate-400 hover:text-white font-medium flex items-center gap-1 min-h-[36px] px-2"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Limpar busca
+                </button>
+              )}
               <button
                 onClick={() => { setSearchTerm(''); setActiveFilter('todos'); }}
-                className="mt-3 text-xs text-emerald-400 font-bold hover:underline"
+                className="text-xs text-emerald-400 font-bold hover:underline flex items-center gap-1.5 min-h-[36px] px-2"
               >
-                Ver todos os 72 treinos
+                <RotateCcw className="w-3.5 h-3.5" />
+                Ver todos os 72
+              </button>
+            </div>
+          </div>
+
+          {/* Dica amigável se a categoria ativa filtrou demais mas existem treinos no catálogo geral */}
+          {filteredSessions.length === 0 && globalSearchMatches.length > 0 && activeFilter !== 'todos' && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+                <div>
+                  <p className="text-xs sm:text-sm font-bold text-white">
+                    Nenhum treino com "{searchTerm}" na categoria "{activeCategoryMeta.name}".
+                  </p>
+                  <p className="text-xs text-amber-200/80">
+                    Encontramos {globalSearchMatches.length} {globalSearchMatches.length === 1 ? 'treino correspondente' : 'treinos correspondentes'} em outras divisões do catálogo.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveFilter('todos')}
+                className="min-h-[38px] px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition active:scale-95 shrink-0 flex items-center justify-center gap-1.5"
+              >
+                Ver todos os {globalSearchMatches.length} resultados
+              </button>
+            </div>
+          )}
+
+          {filteredSessions.length === 0 && (globalSearchMatches.length === 0 || activeFilter === 'todos') ? (
+            <div className="p-8 sm:p-12 text-center bg-slate-900/40 border border-slate-800 rounded-2xl max-w-lg mx-auto my-4">
+              <div className="w-12 h-12 rounded-full bg-slate-800/80 border border-slate-700/60 flex items-center justify-center mx-auto mb-3">
+                <Search className="w-5 h-5 text-slate-400" />
+              </div>
+              <h3 className="text-sm sm:text-base font-bold text-white mb-1">Nenhum treino encontrado</h3>
+              <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                {searchTerm.trim() ? (
+                  <>Não encontramos nenhum treino correspondente a <span className="text-emerald-400 font-semibold">"{searchTerm}"</span>. Tente buscar por grupo muscular, exercício ou equipamento.</>
+                ) : (
+                  <>Nenhum treino disponível nesta categoria no momento.</>
+                )}
+              </p>
+              <button
+                onClick={() => { setSearchTerm(''); setActiveFilter('todos'); }}
+                className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition inline-flex items-center gap-1.5 active:scale-95"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Limpar filtros e ver todos os 72 treinos</span>
               </button>
             </div>
           ) : (

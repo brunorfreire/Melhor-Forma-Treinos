@@ -473,12 +473,12 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
             onClick={() => setActiveAdminTab('exercises')}
             className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
               activeAdminTab === 'exercises'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
                 : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
             }`}
           >
             <Dumbbell className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>Biblioteca EXERCISES</span>
+            <span>Gerenciar Exercícios</span>
           </button>
 
           <button

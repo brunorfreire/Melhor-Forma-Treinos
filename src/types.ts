@@ -22,7 +22,9 @@ export interface Exercise {
   videoValidationStatus?: VideoValidationStatus;
   licenseSource?: string;
   fallbackMediaUrl?: string;
-  mediaType?: 'image' | 'video' | 'youtube' | 'none';
+  vimeoId?: string;
+  vimeoUrl?: string;
+  mediaType?: 'image' | 'video' | 'youtube' | 'vimeo' | 'none';
 }
 
 export interface WorkoutSession {
@@ -109,7 +111,9 @@ export interface CentralExercise {
   videoUrl?: string; // URL direta de vídeo licenciado (mp4/webm) ou mídia animada local (webp/gif)
   fallbackMediaUrl?: string; // URL de fallback caso a mídia primária falhe (ex: GIF de fallback para WebP)
   youtubeId?: string; // Código/ID de vídeo do YouTube curado
-  mediaType?: 'image' | 'video' | 'youtube' | 'none';
+  vimeoId?: string; // Código/ID de vídeo do Vimeo
+  vimeoUrl?: string; // URL do vídeo no Vimeo
+  mediaType?: 'image' | 'video' | 'youtube' | 'vimeo' | 'none';
   licenseSource: 'original' | 'youtube_curated' | 'musclewiki_licensed' | 'manual';
   videoValidationStatus: VideoValidationStatus; // 'validado' | 'pendente_revisao' | 'sem_video'
   demonstratorInfo?: {
