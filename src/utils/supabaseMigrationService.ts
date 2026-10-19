@@ -15,6 +15,7 @@
 
 import { getSupabaseConfigStatus, getValidSessionToken } from './supabaseClient';
 import { getAllCatalogWorkouts, getAllCentralExercises, getAllWorkoutExerciseItems } from '../data/workoutCatalogService';
+import { INITIAL_WORKOUT_EXERCISES } from '../data/workoutExercises';
 import { getStoredAuditRecords } from './libraryAuditService';
 import { getAllMediaFilesFromIndexedDB } from './mediaStorageService';
 
@@ -1411,7 +1412,8 @@ export async function runIdempotentCloudMigration(
 
   const workouts = getAllCatalogWorkouts();
   const exercises = getAllCentralExercises();
-  const relations = getAllWorkoutExerciseItems();
+  const savedRelations = getAllWorkoutExerciseItems();
+  const relations = savedRelations.length >= 251 ? savedRelations : INITIAL_WORKOUT_EXERCISES;
   const auditRecords = getStoredAuditRecords();
   const indexedDbFiles = await getAllMediaFilesFromIndexedDB();
 

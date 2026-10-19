@@ -10,6 +10,7 @@
  */
 
 import { getAllCatalogWorkouts, saveAllCatalogWorkouts, getAllCentralExercises, saveAllCentralExercises, getAllWorkoutExerciseItems, saveAllWorkoutExerciseItems } from '../data/workoutCatalogService';
+import { INITIAL_WORKOUT_EXERCISES } from '../data/workoutExercises';
 import { getStoredAuditRecords, saveStoredAuditRecords, AuditRecord } from './libraryAuditService';
 import { getExerciseAuditLog, getAllMediaFilesFromIndexedDB, putRawMediaFileToIndexedDB, StoredMediaFile } from './mediaStorageService';
 import { getSavedStudents } from './studentStorage';
@@ -138,7 +139,8 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
 export async function generateFullAdministrativeBackup(reviewerName?: string): Promise<AdministrativeBackupPackage> {
   const workouts = getAllCatalogWorkouts();
   const centralExercises = getAllCentralExercises();
-  const workoutExercises = getAllWorkoutExerciseItems();
+  const savedWorkoutExercises = getAllWorkoutExerciseItems();
+  const workoutExercises = savedWorkoutExercises.length >= 251 ? savedWorkoutExercises : INITIAL_WORKOUT_EXERCISES;
   const auditRecords = getStoredAuditRecords();
   const auditLogs = getExerciseAuditLog();
   const savedStudents = getSavedStudents();

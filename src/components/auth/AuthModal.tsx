@@ -77,9 +77,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const res = await registerUser(nome, email, password);
     setLoading(false);
 
-    if (res.success && res.session) {
-      onSessionChange(res.session);
-      onClose();
+    if (res.success) {
+      setSuccessMsg(`Conta criada com sucesso! Enviamos um link e código de confirmação para ${email}. Confirme seu e-mail para ativar seu acesso.`);
+      setTab('login');
     } else {
       setErrorMsg(res.error || 'Erro ao criar conta.');
     }

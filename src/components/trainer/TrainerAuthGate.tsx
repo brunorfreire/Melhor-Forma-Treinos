@@ -3,26 +3,21 @@ import {
   ShieldCheck, 
   KeyRound, 
   AlertCircle, 
-  ArrowRight, 
   ShieldAlert, 
   Mail, 
   Lock, 
-  Server, 
   CheckCircle2, 
-  Copy, 
-  Check, 
   FileText,
-  Sparkles,
-  ExternalLink
+  Copy,
+  Check
 } from 'lucide-react';
 import { 
   getStoredSession, 
   storeSession, 
   getSupabaseConfigStatus, 
-  loginUser, 
-  sendOtpOrMagicLink, 
-  verifyOtpToken, 
-  authenticateTrainerInTransitionalMode 
+  loginUser,
+  verifyEmailOtp,
+  resendConfirmationEmail
 } from '../../utils/supabaseClient';
 import { SUPABASE_SQL_DDL_SCRIPT } from '../../utils/supabaseMigrationService';
 
@@ -32,7 +27,7 @@ interface TrainerAuthGateProps {
 
 /**
  * Verifica de forma estrita se o usuário atual está autenticado com papel de treinador ou administrador
- * Não aceita bypass em sessionStorage nem PINs estáticos.
+ * no banco de dados. Nunca confia em bypasses nem em modo simulado.
  */
 export function isTrainerAuthenticated(): boolean {
   try {
@@ -54,16 +49,12 @@ export function logoutTrainer(): void {
 
 export const TrainerAuthGate: React.FC<TrainerAuthGateProps> = ({ onAuthenticated }) => {
   const supabaseStatus = getSupabaseConfigStatus();
-  const [authMode, setAuthMode] = useState<'password' | 'otp' | 'transitional_dev'>(
-    supabaseStatus.isConfigured ? 'password' : 'transitional_dev'
-  );
+  const [authMode, setAuthMode] = useState<'password' | 'otp'>('password');
 
   // Estados de formulário
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otpToken, setOtpToken] = useState('');
-  const [trainerName, setTrainerName] = useState('');
-  const [trainerCref, setTrainerCref] = useState('');
 
   // Estados de feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,37 +82,13 @@ export const TrainerAuthGate: React.FC<TrainerAuthGateProps> = ({ onAuthenticate
         if (result.session.user.role === 'trainer' || result.session.user.role === 'admin') {
           onAuthenticated();
         } else {
-          setErrorMsg('Acesso restrito. Sua conta foi autenticada como aluno. Apenas usuários com permissão app_role="trainer" ou "admin" na tabela public.profiles podem acessar a central técnica.');
+          setErrorMsg('Acesso restrito. Sua conta foi autenticada como Aluno. Apenas usuários com permissão app_role="trainer" ou "admin" na tabela public.profiles podem acessar a central técnica.');
         }
       } else {
         setErrorMsg(result.error || 'Credenciais inválidas.');
       }
     } catch (err: any) {
       setErrorMsg(`Erro na autenticação: ${err.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Envio de OTP / Magic Link
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !email.includes('@')) {
-      setErrorMsg('Informe um e-mail válido.');
-      return;
-    }
-    setErrorMsg('');
-    setIsSubmitting(true);
-
-    try {
-      const result = await sendOtpOrMagicLink(email);
-      if (result.success) {
-        setOtpSentMessage(result.message);
-      } else {
-        setErrorMsg(result.error || 'Falha ao enviar código OTP.');
-      }
-    } catch (err: any) {
-      setErrorMsg(`Erro ao solicitar OTP: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -134,15 +101,15 @@ export const TrainerAuthGate: React.FC<TrainerAuthGateProps> = ({ onAuthenticate
     setIsSubmitting(true);
 
     try {
-      const result = await verifyOtpToken(email, otpToken);
+      const result = await verifyEmailOtp(email, otpToken);
       if (result.success && result.session) {
         if (result.session.user.role === 'trainer' || result.session.user.role === 'admin') {
           onAuthenticated();
         } else {
-          setErrorMsg('Acesso restrito. Este e-mail não possui permissão de treinador no servidor.');
+          setErrorMsg('Acesso restrito. Este usuário não possui permissão de treinador ou administrador no banco.');
         }
       } else {
-        setErrorMsg(result.error || 'Código OTP inválido.');
+        setErrorMsg(result.error || 'Código de verificação inválido.');
       }
     } catch (err: any) {
       setErrorMsg(`Erro ao validar OTP: ${err.message}`);
@@ -151,17 +118,18 @@ export const TrainerAuthGate: React.FC<TrainerAuthGateProps> = ({ onAuthenticate
     }
   };
 
-  // Autenticação em modo de transição (quando Supabase não está configurado no .env)
-  const handleTransitionalDevLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleResendOtp = async () => {
     if (!email || !email.includes('@')) {
-      setErrorMsg('Por favor, informe seu e-mail profissional.');
+      setErrorMsg('Informe seu e-mail para receber o código.');
       return;
     }
     setErrorMsg('');
-
-    authenticateTrainerInTransitionalMode(email, trainerName, trainerCref);
-    onAuthenticated();
+    const res = await resendConfirmationEmail(email);
+    if (res.success) {
+      setOtpSentMessage(res.message);
+    } else {
+      setErrorMsg(res.message);
+    }
   };
 
   const copySqlToClipboard = () => {
@@ -202,17 +170,17 @@ export const TrainerAuthGate: React.FC<TrainerAuthGateProps> = ({ onAuthenticate
             </div>
           </div>
         ) : (
-          <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-3.5 text-left text-xs text-amber-200/90 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-amber-300">
-              <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Modo de Transição / Supabase Desconectado</span>
+          <div className="bg-rose-950/40 border border-rose-500/40 rounded-2xl p-4 text-left text-xs text-rose-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-rose-300">
+              <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>Configuração Obrigatória do Supabase</span>
             </div>
-            <p className="text-[11px] text-amber-200/80 leading-relaxed">
-              As variáveis <code className="bg-slate-950 px-1 py-0.5 rounded text-amber-300 font-mono">VITE_SUPABASE_URL</code> e <code className="bg-slate-950 px-1 py-0.5 rounded text-amber-300 font-mono">VITE_SUPABASE_ANON_KEY</code> ainda não foram configuradas no arquivo <code className="bg-slate-950 px-1 py-0.5 rounded text-amber-300 font-mono">.env</code>.
+            <p className="text-[11px] text-rose-200/90 leading-relaxed">
+              As variáveis <code className="bg-slate-950 px-1 py-0.5 rounded text-rose-300 font-mono">VITE_SUPABASE_URL</code> e <code className="bg-slate-950 px-1 py-0.5 rounded text-rose-300 font-mono">VITE_SUPABASE_ANON_KEY</code> devem ser configuradas no arquivo <code className="bg-slate-950 px-1 py-0.5 rounded text-rose-300 font-mono">.env</code> para habilitar o acesso administrativo com segurança real.
             </p>
             <div className="flex items-center justify-between pt-1">
               <span className="text-[10px] text-slate-400">
-                Os dados e decisões estão seguros no armazenamento local.
+                O modo simulado está desativado em produção.
               </span>
               <button
                 type="button"
@@ -251,281 +219,164 @@ export const TrainerAuthGate: React.FC<TrainerAuthGateProps> = ({ onAuthenticate
               }`}
             >
               <Mail className="w-3.5 h-3.5" />
-              <span>Código OTP / Magic Link</span>
+              <span>Código de Verificação</span>
             </button>
           </div>
         )}
 
-        {/* Formulário 1: E-mail e Senha via Supabase */}
+        {/* Mensagem de Erro */}
+        {errorMsg && (
+          <div className="bg-rose-950/40 border border-rose-500/40 rounded-xl p-3 text-left flex items-start gap-2 text-xs text-rose-300">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold">{errorMsg}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Mensagem de OTP Enviado */}
+        {otpSentMessage && (
+          <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 text-left flex items-start gap-2 text-xs text-emerald-300">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <p className="flex-1">{otpSentMessage}</p>
+          </div>
+        )}
+
+        {/* Formulário: E-mail e Senha */}
         {supabaseStatus.isConfigured && authMode === 'password' && (
           <form onSubmit={handlePasswordLogin} className="space-y-4 text-left">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
-                E-mail Profissional:
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                E-mail Profissional (Administrador ou Treinador)
               </label>
               <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3 top-3.5 text-slate-500" />
                 <input
                   type="email"
-                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="anderson@melhorforma.com"
-                  className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                  placeholder="seu-email@exemplo.com"
+                  required
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
-                Senha Segura:
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                Senha
               </label>
               <div className="relative">
+                <Lock className="w-4 h-4 absolute left-3 top-3.5 text-slate-500" />
                 <input
                   type="password"
-                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                  required
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
             </div>
-
-            {errorMsg && (
-              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full min-h-[46px] py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 active:scale-98"
+              className="w-full min-h-[44px] py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white text-xs font-black rounded-xl transition shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>{isSubmitting ? 'Verificando Permissões...' : 'Entrar como Treinador'}</span>
-              <ArrowRight className="w-4 h-4" />
+              {isSubmitting ? (
+                <span>Autenticando no Supabase...</span>
+              ) : (
+                <span>Entrar na Central do Treinador</span>
+              )}
             </button>
           </form>
         )}
 
-        {/* Formulário 2: E-mail com OTP / Magic Link */}
+        {/* Formulário: OTP */}
         {supabaseStatus.isConfigured && authMode === 'otp' && (
-          <div className="space-y-4 text-left">
-            {!otpSentMessage ? (
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
-                    Digite seu E-mail Autorizado:
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="treinador@melhorforma.com"
-                      className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
-                    />
-                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
-                {errorMsg && (
-                  <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-                    <span>{errorMsg}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full min-h-[46px] py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 active:scale-98"
-                >
-                  <span>{isSubmitting ? 'Enviando Código...' : 'Enviar Código OTP por E-mail'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
-                  <span>{otpSentMessage}</span>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
-                    Código de Confirmação (OTP):
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={10}
-                    value={otpToken}
-                    onChange={(e) => setOtpToken(e.target.value)}
-                    placeholder="Ex: 849201"
-                    className="w-full min-h-[44px] px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-center text-lg font-mono tracking-widest text-emerald-400 placeholder-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
-                  />
-                </div>
-
-                {errorMsg && (
-                  <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-                    <span>{errorMsg}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full min-h-[46px] py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 active:scale-98"
-                >
-                  <span>{isSubmitting ? 'Verificando Código...' : 'Confirmar e Acessar Painel'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setOtpSentMessage(null)}
-                  className="w-full text-center text-xs text-slate-400 hover:text-white py-1"
-                >
-                  Reenviar ou usar outro e-mail
-                </button>
-              </form>
-            )}
-          </div>
-        )}
-
-        {/* Formulário 3: Modo de Transição (Local/Desacoplado) */}
-        {!supabaseStatus.isConfigured && (
-          <form onSubmit={handleTransitionalDevLogin} className="space-y-4 text-left">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
-                Identificação do Treinador / Administrador:
+          <form onSubmit={handleVerifyOtp} className="space-y-4 text-left">
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                E-mail Cadastrado
               </label>
               <div className="relative">
-                <input
-                  type="text"
-                  required
-                  value={trainerName}
-                  onChange={(e) => setTrainerName(e.target.value)}
-                  placeholder="Nome do Treinador (ex: Anderson)"
-                  className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
-                />
-                <ShieldCheck className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
-                E-mail Profissional:
-              </label>
-              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3 top-3.5 text-slate-500" />
                 <input
                   type="email"
-                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="treinador@melhorforma.com"
-                  className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                  placeholder="seu-email@exemplo.com"
+                  required
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block flex items-center justify-between">
-                <span>Registro CREF (Opcional):</span>
-                <span className="text-[10px] text-slate-500">Para auditoria técnica</span>
-              </label>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-300">
+                  Código de 6 Dígitos
+                </label>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline"
+                >
+                  Enviar / Reenviar Código
+                </button>
+              </div>
               <input
                 type="text"
-                value={trainerCref}
-                onChange={(e) => setTrainerCref(e.target.value)}
-                placeholder="Ex: CREF 012345-G/SP"
-                className="w-full min-h-[44px] px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                value={otpToken}
+                onChange={(e) => setOtpToken(e.target.value)}
+                placeholder="123456"
+                required
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-center font-mono tracking-widest text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
-            {errorMsg && (
-              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
             <button
               type="submit"
-              className="w-full min-h-[48px] py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 active:scale-98"
+              disabled={isSubmitting}
+              className="w-full min-h-[44px] py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white text-xs font-black rounded-xl transition shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Acessar Painel em Modo de Transição</span>
-              <ArrowRight className="w-4 h-4" />
+              {isSubmitting ? (
+                <span>Validando Código no Supabase...</span>
+              ) : (
+                <span>Confirmar e Acessar</span>
+              )}
             </button>
           </form>
         )}
-
-        {/* Informações de Auditoria e Segurança */}
-        <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 text-left text-xs text-slate-400 space-y-2">
-          <div className="flex items-center gap-2 font-bold text-slate-300">
-            <Server className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Arquitetura de Segurança e RBAC</span>
-          </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            Eliminamos PIN fixo e validação insegura no cliente. O acesso administrativo é delimitado pelo atributo de segurança <code className="text-emerald-400 font-mono">app_role</code>, isolando a autoria das decisões biomecânicas.
-          </p>
-        </div>
       </div>
 
-      {/* Modal de Exibição do Script SQL DDL */}
+      {/* Modal Visualizador do DDL SQL */}
       {showSqlModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-white">Esquema SQL Oficial do Supabase</h3>
-                  <p className="text-xs text-slate-400">Tabelas, RLS Policies e Storage Bucket</p>
-                </div>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl max-h-[85vh] rounded-3xl p-6 flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-bold text-white">Script DDL & RLS Supabase</h3>
               </div>
               <button
                 onClick={() => setShowSqlModal(false)}
-                className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs text-slate-300">
-              <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-emerald-300 leading-relaxed">
-                Este script cria a tabela <code className="text-white font-mono">profiles</code> com o atributo próprio <code className="text-white font-mono">app_role</code>, as tabelas protegidas por RLS para os 72 treinos, 46 exercícios, 251 relações e o bucket <code className="text-white font-mono">exercise-media</code>.
-              </div>
-
-              <div className="relative">
-                <pre className="p-4 bg-slate-950 border border-slate-800 rounded-xl font-mono text-[11px] text-slate-300 overflow-x-auto max-h-72 whitespace-pre leading-relaxed">
-                  {SUPABASE_SQL_DDL_SCRIPT}
-                </pre>
-                <button
-                  onClick={copySqlToClipboard}
-                  className="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1.5 shadow"
-                >
-                  {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedSql ? 'Copiado!' : 'Copiar SQL'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-800 bg-slate-950 flex justify-end">
-              <button
-                onClick={() => setShowSqlModal(false)}
-                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-lg"
               >
                 Fechar
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto my-4 bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300">
+              <pre>{SUPABASE_SQL_DDL_SCRIPT}</pre>
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={copySqlToClipboard}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
+              >
+                {copiedSql ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedSql ? 'Copiado!' : 'Copiar Script SQL'}</span>
               </button>
             </div>
           </div>

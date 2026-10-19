@@ -84,7 +84,7 @@ const PUBLIC_APPROVED_MEDIA = [
   'subida-step-degrau'
 ];
 
-app.use('/exercises', (req, res, next) => {
+app.use('/exercises', async (req, res, next) => {
   const filePath = req.path.replace(/^\//, '');
   const baseName = filePath.replace(/\.[^.]+$/, '');
 
@@ -93,7 +93,7 @@ app.use('/exercises', (req, res, next) => {
     return next();
   }
 
-  // Mídias exclusivas Premium ou pendentes exigem token de autorização
+  // Mídias exclusivas Premium ou pendentes exigem token de autorização real verificado
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(403).json({
@@ -102,7 +102,66 @@ app.use('/exercises', (req, res, next) => {
     });
   }
 
-  next();
+  const token = authHeader.replace(/^Bearer\s+/, '').trim();
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(403).json({
+      error: 'STORAGE_LOCKED',
+      message: 'Servidor Supabase pendente de configuração no backend. Arquivos protegidos permanecem bloqueados.'
+    });
+  }
+
+  try {
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!userRes.ok) {
+      return res.status(401).json({
+        error: 'INVALID_TOKEN',
+        message: 'Token de autenticação inválido ou expirado.'
+      });
+    }
+
+    const userData = await userRes.json();
+    if (!userData || (!userData.email_confirmed_at && !userData.confirmed_at)) {
+      return res.status(403).json({
+        error: 'EMAIL_NOT_CONFIRMED',
+        message: 'Confirmação obrigatória de e-mail pendente.'
+      });
+    }
+
+    // Consulta perfil autoritativo
+    const profileRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userData.id}&select=app_role,subscription_status`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (profileRes.ok) {
+      const profiles = await profileRes.json();
+      const profile = Array.isArray(profiles) && profiles.length > 0 ? profiles[0] : null;
+      if (profile && (profile.app_role === 'trainer' || profile.app_role === 'admin' || profile.subscription_status === 'active')) {
+        return next();
+      }
+    }
+
+    return res.status(403).json({
+      error: 'PREMIUM_SUBSCRIPTION_REQUIRED',
+      message: 'Acesso negado: esta mídia requer assinatura Premium ativa ou autorização administrativa.'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: 'AUTH_VERIFICATION_FAILED',
+      message: 'Falha na verificação de autorização no Supabase.'
+    });
+  }
 });
 
 app.use(express.static(path.join(__dirname, 'dist')));

@@ -124,14 +124,23 @@ export function getHydratedWorkout(
     userStatus?: SubscriptionStatus;
     userRole?: UserRole;
     purchasedWorkoutIds?: string[];
+    isAuthenticated?: boolean;
   }
 ): HydratedWorkoutSession | null {
   const workouts = getAllCatalogWorkouts();
   const workout = workouts.find(w => w.id === workoutId);
   if (!workout) return null;
 
-  // Se o treino for Premium e o chamador não possuir permissão confirmada,
-  // NÃO retorna as prescrições de exercícios, séries e repetições
+  // Regra 1: Prescrições Free somente são liberadas para usuários autenticados
+  // Visitantes anônimos veem apenas os dados da vitrine (título, capa, duração, objetivo)
+  if (options?.isAuthenticated === false) {
+    return {
+      workout,
+      exercises: []
+    };
+  }
+
+  // Regra 2: Prescrições Premium exigem autorização confirmada (assinatura ativa, compra avulsa ou admin/treinador)
   if (workout.accessLevel === 'premium' && !options?.allowPremium) {
     const isAuthorized = canUserAccessWorkout(
       workout, 
