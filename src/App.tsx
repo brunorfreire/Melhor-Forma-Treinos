@@ -19,6 +19,7 @@ import { MyWorkoutTodayModal } from './components/MyWorkoutTodayModal';
 import { StudentEvolutionView } from './components/StudentEvolutionView';
 import { getAllCatalogWorkouts } from './data/workoutCatalogService';
 import { GlobalAuthGate } from './components/auth/GlobalAuthGate';
+import { LandingPage } from './components/landing/LandingPage';
 import { validateCurrentSession, logoutUser, AuthSession } from './utils/supabaseClient';
 import { 
   Play, 
@@ -40,10 +41,22 @@ import {
 
 const STORAGE_KEY = 'mf_treino_v1_lite_plan';
 
+function getInitialRoute(): string {
+  if (typeof window === 'undefined') return '/';
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+
+  if (path === '/entrar' || hash === '#/entrar' || hash === '#entrar') return '/entrar';
+  if (path === '/cadastro' || hash === '#/cadastro' || hash === '#cadastro') return '/cadastro';
+  if (path === '/recuperar' || hash === '#/recuperar' || hash === '#recuperar') return '/recuperar';
+  if (path === '/app' || hash === '#/app' || hash === '#app') return '/app';
+  return '/';
+}
+
 export default function App() {
+  const [currentRoute, setCurrentRoute] = useState<string>(getInitialRoute);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [authError, setAuthError] = useState<string | undefined>();
 
   const [plan, setPlan] = useState<WorkoutPlan>(SAMPLE_WORKOUT_PLAN);
   const [viewMode, setViewMode] = useState<ViewMode>('home');
@@ -53,6 +66,30 @@ export default function App() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isTodayModalOpen, setIsTodayModalOpen] = useState(false);
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
+
+  // Navegação SPA segura
+  const navigate = (route: string) => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', route);
+      }
+    } catch {}
+    setCurrentRoute(route);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Monitora histórico de navegação (botão Voltar/Avançar do navegador)
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentRoute(getInitialRoute());
+    };
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
 
   // 1. Verificação e Restauração Segura de Sessão no Supabase Auth
   useEffect(() => {
@@ -67,15 +104,11 @@ export default function App() {
             setSession(result.session);
           } else {
             setSession(null);
-            if (result.error && !result.error.includes('não configurado')) {
-              setAuthError(result.error);
-            }
           }
         }
       } catch (err: any) {
         if (isMounted) {
           setSession(null);
-          setAuthError(err.message);
         }
       } finally {
         if (isMounted) {
@@ -88,9 +121,18 @@ export default function App() {
     return () => { isMounted = false; };
   }, []);
 
-  // 2. Leitura de URL (Apenas APÓS a autenticação confirmada)
+  // 2. Proteção de Rota /app (Se não autenticado, redireciona para /entrar)
   useEffect(() => {
-    if (!session) return; // Bloqueia bypass de login via hash/query parameters
+    if (!isCheckingAuth) {
+      if (currentRoute === '/app' && !session) {
+        navigate('/entrar');
+      }
+    }
+  }, [currentRoute, session, isCheckingAuth]);
+
+  // 3. Leitura de URL de Treino (Apenas quando autenticado na rota /app)
+  useEffect(() => {
+    if (!session || currentRoute !== '/app') return;
 
     const parseUrl = () => {
       const hash = window.location.hash;
@@ -133,18 +175,16 @@ export default function App() {
     };
 
     parseUrl();
-
-    window.addEventListener('hashchange', parseUrl);
-    return () => window.removeEventListener('hashchange', parseUrl);
-  }, [session]);
+  }, [session, currentRoute]);
 
   const handleLogout = async () => {
     await logoutUser();
     setSession(null);
     setViewMode('home');
+    navigate('/');
   };
 
-  // Save to localStorage when modified in editor
+  // Salva no localStorage quando modificado no editor
   const handleUpdatePlan = (updated: WorkoutPlan) => {
     setPlan(updated);
     try {
@@ -204,24 +244,59 @@ export default function App() {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
         <MelhorFormaLogo size={52} className="animate-pulse" />
         <p className="mt-5 text-xs font-bold text-slate-300 tracking-wide">
-          Validando autenticação e acesso seguro...
+          Carregando Melhor Forma Play 40+...
         </p>
-        <span className="text-[10px] text-emerald-400 font-mono mt-1">
-          Melhor Forma Play 40+
-        </span>
       </div>
     );
   }
 
   // =========================================================================
-  // BLOQUEIO GLOBAL: VISITANTE NÃO AUTENTICADO
-  // NENHUM CONTEÚDO DE TREINO É CARREGADO ANTES DA AUTENTICAÇÃO
+  // ROTA 1: LANDING PAGE PÚBLICA COMERCIAL (/)
+  // =========================================================================
+  if (currentRoute === '/') {
+    return (
+      <LandingPage
+        onNavigate={navigate}
+        isAuthenticated={Boolean(session)}
+      />
+    );
+  }
+
+  // =========================================================================
+  // ROTAS 2, 3 e 4: AUTENTICAÇÃO REAL (/entrar, /cadastro, /recuperar)
+  // =========================================================================
+  if (currentRoute === '/entrar' || currentRoute === '/cadastro' || currentRoute === '/recuperar') {
+    const initialView = 
+      currentRoute === '/cadastro' ? 'register' :
+      currentRoute === '/recuperar' ? 'recover' : 'login';
+
+    return (
+      <GlobalAuthGate
+        initialView={initialView}
+        onAuthenticated={(newSession) => {
+          setSession(newSession);
+          navigate('/app');
+        }}
+        onNavigate={navigate}
+        onBackToLanding={() => navigate('/')}
+      />
+    );
+  }
+
+  // =========================================================================
+  // ROTA 5: APLICATIVO PROTEGIDO (/app)
+  // SE NÃO AUTENTICADO, BLOQUEIA COMPLETAMENTE E DIRECIONA AO LOGIN
   // =========================================================================
   if (!session) {
     return (
-      <GlobalAuthGate 
-        onAuthenticated={(newSession) => setSession(newSession)}
-        configError={authError}
+      <GlobalAuthGate
+        initialView="login"
+        onAuthenticated={(newSession) => {
+          setSession(newSession);
+          navigate('/app');
+        }}
+        onNavigate={navigate}
+        onBackToLanding={() => navigate('/')}
       />
     );
   }
@@ -240,11 +315,11 @@ export default function App() {
           {/* Top Row on Mobile: Brand Logo, User Status & PWA Install Button */}
           <div className="flex items-center justify-between w-full sm:w-auto gap-2">
             <div 
-              onClick={() => setViewMode('home')}
+              onClick={() => { setViewMode('home'); navigate('/app'); }}
               className="flex items-center gap-2 cursor-pointer group shrink-0 min-w-0"
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter') setViewMode('home'); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { setViewMode('home'); navigate('/app'); } }}
               aria-label="Ir para a página inicial do Melhor Forma Play"
             >
               <MelhorFormaLogo size={34} className="sm:w-9 sm:h-9 shrink-0" />
@@ -389,7 +464,7 @@ export default function App() {
       <PWAInstallBanner />
 
       {/* ========================================================================= */}
-      {/* ACTIVE VIEW ROUTING */}
+      {/* ACTIVE VIEW ROUTING DENTRO DO APP PROTEGIDO */}
       {/* ========================================================================= */}
       {viewMode === 'home' && (
         <StreamingHomeView
@@ -467,7 +542,7 @@ export default function App() {
             </p>
             <button
               onClick={() => setViewMode('home')}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Voltar ao Catálogo de Treinos</span>
@@ -477,7 +552,7 @@ export default function App() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODALS */}
+      {/* MODALS GLOBAIS */}
       {/* ========================================================================= */}
       {isShareModalOpen && (
         <ShareModal

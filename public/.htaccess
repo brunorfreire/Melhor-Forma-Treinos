@@ -16,9 +16,11 @@
   </FilesMatch>
 </IfModule>
 
-# Roteamento SPA (funciona tanto na raiz public_html quanto em subpastas)
+# Bloqueio de arquivos exclusivos Premium e pendentes em servidores Apache / LiteSpeed (Hostinger)
+# Garante que mídias protegidas não sejam servidas diretamente sem passar pela autorização do Supabase Storage
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteRule ^exercises/(triceps-frances-halter|mesa-flexora)\.(webp|gif|mp4)$ - [F,NC,L]
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d

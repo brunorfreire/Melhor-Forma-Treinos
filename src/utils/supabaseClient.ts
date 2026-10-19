@@ -4,7 +4,9 @@
  * 
  * Regras Obrigatórias de Produção:
  * 1. Não utiliza modos simulados (sem isDevFallback, sem transitional_dev, sem verificação fictícia de OTP).
- * 2. Se o Supabase não estiver configurado no .env, bloqueia o acesso protegido e orienta a configuração.
+ * 2. Se o Supabase não estiver configurado no build, bloqueia todas as rotas protegidas e exibe
+ *    apenas uma mensagem discreta e amigável: "O acesso está temporariamente indisponível. Tente novamente mais tarde."
+ *    Detalhes técnicos são registrados exclusivamente no console/ambiente dev.
  * 3. Todas as permissões (app_role e subscription_status) são validadas diretamente no Supabase (public.profiles),
  *    sem confiar em valores manipuláveis no cliente.
  * 4. Exige confirmação real de e-mail antes de liberar o acesso de alunos aos treinos Free.
@@ -19,22 +21,45 @@ export interface SupabaseConfigStatus {
   message: string;
 }
 
-const SUPABASE_URL = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_SUPABASE_URL || '') : '';
-const SUPABASE_ANON_KEY = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_SUPABASE_ANON_KEY || '') : '';
+export const GENERIC_CONFIG_ERROR = 'O acesso está temporariamente indisponível. Tente novamente mais tarde.';
+
+function getRuntimeEnv(key: string): string {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+    return String(import.meta.env[key]).trim();
+  }
+  if (typeof window !== 'undefined') {
+    const win = window as any;
+    if (win.__MF_CONFIG__ && win.__MF_CONFIG__[key]) return String(win.__MF_CONFIG__[key]).trim();
+    if (win.__ENV__ && win.__ENV__[key]) return String(win.__ENV__[key]).trim();
+  }
+  return '';
+}
+
+export function getSupabaseUrl(): string {
+  return getRuntimeEnv('VITE_SUPABASE_URL');
+}
+
+export function getSupabaseAnonKey(): string {
+  return getRuntimeEnv('VITE_SUPABASE_ANON_KEY');
+}
 
 export function getSupabaseConfigStatus(): SupabaseConfigStatus {
+  const url = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
+
   const isConfigured = Boolean(
-    SUPABASE_URL && 
-    SUPABASE_ANON_KEY && 
-    SUPABASE_URL.startsWith('http') &&
-    !SUPABASE_URL.includes('your-project')
+    url && 
+    anonKey && 
+    url.startsWith('http') &&
+    !url.includes('your-project')
   );
+
   return {
     isConfigured,
-    url: isConfigured ? SUPABASE_URL : null,
+    url: isConfigured ? url : null,
     message: isConfigured
       ? 'Supabase Auth conectado ativamente na nuvem.'
-      : 'Supabase pendente de credenciais VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env.'
+      : 'Credenciais de autenticação não configuradas no ambiente.'
   };
 }
 
@@ -98,11 +123,14 @@ async function fetchAuthoritativeProfile(
   userId: string, 
   token: string
 ): Promise<{ appRole: UserRole; subscriptionStatus: SubscriptionStatus; nome?: string; cref?: string }> {
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=app_role,subscription_status,nome,cref`, {
+    const res = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=app_role,subscription_status,nome,cref`, {
       method: 'GET',
       headers: {
-        'apikey': SUPABASE_ANON_KEY,
+        'apikey': supabaseAnonKey,
         'Authorization': `Bearer ${token}`
       }
     });
@@ -146,8 +174,7 @@ export async function validateCurrentSession(): Promise<{
     storeSession(null);
     return {
       valid: false,
-      session: null,
-      error: 'Supabase não configurado. Adicione VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env.'
+      session: null
     };
   }
 
@@ -156,12 +183,15 @@ export async function validateCurrentSession(): Promise<{
     return { valid: false, session: null };
   }
 
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+
   try {
     // 1. Revalidação viva do token com o servidor Supabase Auth
-    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
       method: 'GET',
       headers: {
-        'apikey': SUPABASE_ANON_KEY,
+        'apikey': supabaseAnonKey,
         'Authorization': `Bearer ${stored.token}`
       }
     });
@@ -239,9 +269,10 @@ export async function loginUser(
 }> {
   const status = getSupabaseConfigStatus();
   if (!status.isConfigured) {
+    console.error('[Supabase Auth] VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não estão disponíveis no build de produção.');
     return {
       success: false,
-      error: 'Supabase não configurado. O login obrigatório requer credenciais reais no servidor.'
+      error: GENERIC_CONFIG_ERROR
     };
   }
 
@@ -252,12 +283,15 @@ export async function loginUser(
     return { success: false, error: 'Por favor, informe sua senha.' };
   }
 
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY
+        'apikey': supabaseAnonKey
       },
       body: JSON.stringify({
         email: email.trim().toLowerCase(),
@@ -273,7 +307,7 @@ export async function loginUser(
         return {
           success: false,
           isEmailUnconfirmed: true,
-          error: 'E-mail não confirmado. O acesso requer confirmação obrigatória. Verifique sua caixa de entrada ou solicite o reenvio.'
+          error: 'E-mail não confirmado. O acesso requer confirmação obrigatória. Verifique sua caixa de entrada ou solicite o reenvio do código.'
         };
       }
       if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
@@ -282,7 +316,7 @@ export async function loginUser(
       return { success: false, error: data.error_description || data.message || 'Falha ao autenticar no servidor.' };
     }
 
-    // Validação estrita de confirmação de e-mail mesmo se retornar token
+    // Validação estrita de confirmação de e-mail
     const isConfirmed = Boolean(data.user?.email_confirmed_at || data.user?.confirmed_at);
     if (!isConfirmed) {
       return {
@@ -315,7 +349,7 @@ export async function loginUser(
     storeSession(session);
     return { success: true, session };
   } catch (err: any) {
-    return { success: false, error: `Erro de conexão com o Supabase: ${err.message}` };
+    return { success: false, error: `Erro de conexão: ${err.message}` };
   }
 }
 
@@ -334,9 +368,10 @@ export async function registerUser(
 }> {
   const status = getSupabaseConfigStatus();
   if (!status.isConfigured) {
+    console.error('[Supabase Auth] VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não estão disponíveis no build de produção.');
     return {
       success: false,
-      error: 'Supabase não configurado. O cadastro de novos usuários requer credenciais ativas do servidor.'
+      error: GENERIC_CONFIG_ERROR
     };
   }
 
@@ -353,12 +388,15 @@ export async function registerUser(
     return { success: false, error: 'A senha deve conter no mínimo 6 caracteres.' };
   }
 
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+    const res = await fetch(`${supabaseUrl}/auth/v1/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY
+        'apikey': supabaseAnonKey
       },
       body: JSON.stringify({
         email: cleanEmail,
@@ -386,17 +424,16 @@ export async function registerUser(
           error: 'Muitas tentativas em pouco tempo. Por favor, aguarde alguns minutos antes de tentar novamente.'
         };
       }
-      return { success: false, error: data.error_description || data.message || 'Falha ao cadastrar no Supabase.' };
+      return { success: false, error: data.error_description || data.message || 'Falha ao cadastrar conta.' };
     }
 
-    // Regra Obrigatória: Não conceder acesso antes da confirmação real do e-mail
     return {
       success: true,
       requiresEmailConfirmation: true,
       email: cleanEmail
     };
   } catch (err: any) {
-    return { success: false, error: `Erro ao conectar com o Supabase: ${err.message}` };
+    return { success: false, error: `Erro ao conectar com o servidor: ${err.message}` };
   }
 }
 
@@ -413,7 +450,8 @@ export async function verifyEmailOtp(
 }> {
   const status = getSupabaseConfigStatus();
   if (!status.isConfigured) {
-    return { success: false, error: 'Supabase não configurado.' };
+    console.error('[Supabase Auth] VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não configuradas.');
+    return { success: false, error: GENERIC_CONFIG_ERROR };
   }
 
   const cleanEmail = email.trim().toLowerCase();
@@ -423,16 +461,18 @@ export async function verifyEmailOtp(
     return { success: false, error: 'Informe o e-mail e o código de verificação recebido.' };
   }
 
-  // Tenta verificação tipo 'signup' e em caso de falha tenta 'email'
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+
   const verifyTypes: Array<'signup' | 'email'> = ['signup', 'email'];
 
   for (const vType of verifyTypes) {
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+      const res = await fetch(`${supabaseUrl}/auth/v1/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY
+          'apikey': supabaseAnonKey
         },
         body: JSON.stringify({
           type: vType,
@@ -480,7 +520,8 @@ export async function verifyEmailOtp(
 export async function resendConfirmationEmail(email: string): Promise<{ success: boolean; message: string }> {
   const status = getSupabaseConfigStatus();
   if (!status.isConfigured) {
-    return { success: false, message: 'Supabase não configurado.' };
+    console.error('[Supabase Auth] VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não configuradas.');
+    return { success: false, message: GENERIC_CONFIG_ERROR };
   }
 
   const cleanEmail = email.trim().toLowerCase();
@@ -488,12 +529,15 @@ export async function resendConfirmationEmail(email: string): Promise<{ success:
     return { success: false, message: 'Informe um e-mail válido.' };
   }
 
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/resend`, {
+    const res = await fetch(`${supabaseUrl}/auth/v1/resend`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY
+        'apikey': supabaseAnonKey
       },
       body: JSON.stringify({
         type: 'signup',
@@ -524,9 +568,10 @@ export async function resendConfirmationEmail(email: string): Promise<{ success:
 export async function requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
   const status = getSupabaseConfigStatus();
   if (!status.isConfigured) {
+    console.error('[Supabase Auth] VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não configuradas.');
     return {
       success: false,
-      message: 'Supabase não configurado. A recuperação de acesso requer conexão ativa com o servidor.'
+      message: GENERIC_CONFIG_ERROR
     };
   }
 
@@ -535,12 +580,15 @@ export async function requestPasswordReset(email: string): Promise<{ success: bo
     return { success: false, message: 'Informe um e-mail válido para recuperação.' };
   }
 
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+    const res = await fetch(`${supabaseUrl}/auth/v1/recover`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY
+        'apikey': supabaseAnonKey
       },
       body: JSON.stringify({ email: cleanEmail })
     });
@@ -566,12 +614,15 @@ export async function logoutUser(): Promise<void> {
   const status = getSupabaseConfigStatus();
   const current = getStoredSession();
 
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+
   if (status.isConfigured && current?.token) {
     try {
-      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+      await fetch(`${supabaseUrl}/auth/v1/logout`, {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
+          'apikey': supabaseAnonKey,
           'Authorization': `Bearer ${current.token}`
         }
       });
