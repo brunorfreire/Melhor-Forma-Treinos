@@ -74,13 +74,13 @@ export function storeSession(session: AuthSession | null): void {
 }
 
 /**
- * Login de usuário
+ * Login de usuário com e-mail e senha
  */
 export async function loginUser(email: string, password: string): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
   const status = getSupabaseConfigStatus();
 
-  // Se Supabase estiver conectado via REST API oficial
-  if (status.isConfigured) {
+  // 1. SUPABASE AUTH REAL
+  if (status.isConfigured && SUPABASE_URL && SUPABASE_ANON_KEY) {
     try {
       const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
         method: 'POST',
@@ -88,7 +88,7 @@ export async function loginUser(email: string, password: string): Promise<{ succ
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: email.trim(), password })
       });
 
       const data = await res.json();
@@ -96,11 +96,42 @@ export async function loginUser(email: string, password: string): Promise<{ succ
         return { success: false, error: data.error_description || data.message || 'Falha na autenticação via Supabase.' };
       }
 
+      // Consulta o perfil na tabela public.profiles para obter o app_role real sem depender de JWT role padrão
+      let userRole: UserRole = 'student';
+      let userCref: string | undefined;
+
+      try {
+        const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=app_role,cref,nome`, {
+          method: 'GET',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${data.access_token}`
+          }
+        });
+        if (profileRes.ok) {
+          const profiles = await profileRes.json();
+          if (Array.isArray(profiles) && profiles.length > 0) {
+            const prof = profiles[0];
+            if (prof.app_role === 'trainer' || prof.app_role === 'admin') {
+              userRole = prof.app_role;
+            }
+            userCref = prof.cref;
+          }
+        }
+      } catch (profileErr) {
+        console.warn('Erro ao consultar perfil no Supabase:', profileErr);
+      }
+
+      // Se não encontrou na tabela profiles, consulta metadados seguros
+      if (userRole === 'student' && (data.user.user_metadata?.app_role === 'trainer' || data.user.user_metadata?.app_role === 'admin')) {
+        userRole = data.user.user_metadata.app_role;
+      }
+
       const userProfile: UserProfile = {
         id: data.user.id,
         nome: data.user.user_metadata?.nome || email.split('@')[0],
         email: data.user.email,
-        role: data.user.user_metadata?.role || 'student',
+        role: userRole,
         created_at: data.user.created_at,
         subscription_status: data.user.user_metadata?.subscription_status || 'free'
       };
@@ -117,8 +148,7 @@ export async function loginUser(email: string, password: string): Promise<{ succ
     }
   }
 
-  // MODO DESENVOLVIMENTO DESACOPLADO
-  // Validação preliminar local sem enganar o usuário
+  // 2. MODO DESENVOLVIMENTO DESACOPLADO (Sem Supabase no .env)
   if (!email || !email.includes('@')) {
     return { success: false, error: 'Por favor, insira um e-mail válido.' };
   }
@@ -126,16 +156,14 @@ export async function loginUser(email: string, password: string): Promise<{ succ
     return { success: false, error: 'A senha deve conter no mínimo 6 caracteres.' };
   }
 
-  // Verifica se é o treinador oficial
-  const isTrainerEmail = email.toLowerCase().includes('anderson') || email.toLowerCase().includes('treinador') || email.toLowerCase().includes('admin');
-
+  // Não concede papel administrativo por palavras mágicas no e-mail; inicia como aluno por padrão
   const userProfile: UserProfile = {
     id: `usr-dev-${Date.now().toString(36)}`,
     nome: email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
     email: email.toLowerCase().trim(),
-    role: isTrainerEmail ? 'trainer' : 'student',
+    role: 'student', // Segurança: padrão de menor privilégio
     created_at: new Date().toISOString(),
-    subscription_status: isTrainerEmail ? 'active' : 'free'
+    subscription_status: 'free'
   };
 
   const devSession: AuthSession = {
@@ -144,6 +172,148 @@ export async function loginUser(email: string, password: string): Promise<{ succ
   };
   storeSession(devSession);
   return { success: true, session: devSession };
+}
+
+/**
+ * Envia código OTP ou link de acesso (Magic Link) via Supabase Auth
+ */
+export async function sendOtpOrMagicLink(email: string): Promise<{ success: boolean; message: string; error?: string }> {
+  const status = getSupabaseConfigStatus();
+
+  if (status.isConfigured && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          create_user: false // Apenas para contas já existentes
+        })
+      });
+
+      if (res.ok) {
+        return { success: true, message: `Código de verificação ou link enviado para ${email}. Verifique sua caixa de entrada.` };
+      } else {
+        const data = await res.json();
+        return { success: false, message: 'Falha ao enviar OTP', error: data.error_description || data.message || 'E-mail não cadastrado ou limite de envios excedido.' };
+      }
+    } catch (err: any) {
+      return { success: false, message: 'Erro de rede', error: err.message };
+    }
+  }
+
+  // Em modo de desenvolvimento sem Supabase conectado
+  return {
+    success: true,
+    message: `[Ambiente de Transição/Dev] O e-mail ${email} foi registrado para teste. Quando o Supabase estiver configurado no .env, o OTP real será enviado via SMTP.`
+  };
+}
+
+/**
+ * Valida o token OTP enviado por e-mail no Supabase Auth
+ */
+export async function verifyOtpToken(email: string, token: string): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
+  const status = getSupabaseConfigStatus();
+
+  if (status.isConfigured && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({
+          type: 'email',
+          email: email.trim(),
+          token: token.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error_description || data.message || 'Código OTP inválido ou expirado.' };
+      }
+
+      // Consulta papel no profiles
+      let userRole: UserRole = 'student';
+      try {
+        const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=app_role,cref`, {
+          method: 'GET',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${data.access_token}`
+          }
+        });
+        if (profileRes.ok) {
+          const profiles = await profileRes.json();
+          if (Array.isArray(profiles) && profiles.length > 0) {
+            userRole = profiles[0].app_role || 'student';
+          }
+        }
+      } catch {}
+
+      const userProfile: UserProfile = {
+        id: data.user.id,
+        nome: data.user.user_metadata?.nome || email.split('@')[0],
+        email: data.user.email,
+        role: userRole,
+        created_at: data.user.created_at,
+        subscription_status: data.user.user_metadata?.subscription_status || 'free'
+      };
+
+      const session: AuthSession = {
+        user: userProfile,
+        token: data.access_token,
+        isDevFallback: false
+      };
+      storeSession(session);
+      return { success: true, session };
+    } catch (err: any) {
+      return { success: false, error: `Falha ao verificar OTP: ${err.message}` };
+    }
+  }
+
+  // Modo dev de transição
+  if (token.trim().length >= 4) {
+    const userProfile: UserProfile = {
+      id: `usr-dev-${Date.now().toString(36)}`,
+      nome: email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      email: email.toLowerCase().trim(),
+      role: 'trainer',
+      created_at: new Date().toISOString(),
+      subscription_status: 'active'
+    };
+    const devSession: AuthSession = { user: userProfile, isDevFallback: true };
+    storeSession(devSession);
+    return { success: true, session: devSession };
+  }
+
+  return { success: false, error: 'Código deve conter no mínimo 4 dígitos.' };
+}
+
+/**
+ * Autenticação explícita de Treinador em modo de transição (quando Supabase ainda não está conectado no .env)
+ */
+export function authenticateTrainerInTransitionalMode(email: string, trainerName?: string, cref?: string): AuthSession {
+  const userProfile: UserProfile = {
+    id: `trainer-transitional-${Date.now().toString(36)}`,
+    nome: (trainerName && trainerName.trim()) || 'Treinador Autorizado',
+    email: email.trim().toLowerCase(),
+    role: 'trainer',
+    created_at: new Date().toISOString(),
+    subscription_status: 'active'
+  };
+
+  const session: AuthSession = {
+    user: userProfile,
+    isDevFallback: true
+  };
+  storeSession(session);
+  return session;
 }
 
 /**

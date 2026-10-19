@@ -44,9 +44,11 @@ import {
   Layers,
   ArrowRight
 } from 'lucide-react';
+import { TrainerLibraryAuditTab } from './TrainerLibraryAuditTab';
 
 interface TrainerExercisesTabProps {
   onPreviewExerciseVideo: (ex: Exercise) => void;
+  initialSubSection?: 'library' | 'audit';
 }
 
 // 13 arquivos pré-instalados fisicamente na pasta public/exercises/
@@ -89,8 +91,17 @@ const LOCAL_PRESET_MEDIA = [
 ];
 
 export const TrainerExercisesTab: React.FC<TrainerExercisesTabProps> = ({
-  onPreviewExerciseVideo
+  onPreviewExerciseVideo,
+  initialSubSection = 'library'
 }) => {
+  const [activeSubSection, setActiveSubSection] = useState<'library' | 'audit'>(initialSubSection);
+
+  useEffect(() => {
+    if (initialSubSection) {
+      setActiveSubSection(initialSubSection);
+    }
+  }, [initialSubSection]);
+
   const [exercises, setExercises] = useState<CentralExercise[]>(() => getAllCentralExercises());
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState<string>('todos');
@@ -389,10 +400,53 @@ export const TrainerExercisesTab: React.FC<TrainerExercisesTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* ========================================================================= */}
-      {/* 1. TOP BANNER & MÉTRICAS REAIS DA CENTRAL DE EXERCÍCIOS                   */}
-      {/* ========================================================================= */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/40">
+      {/* Sub-navegação do Módulo Gerenciar Exercícios */}
+      <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3 flex-wrap">
+        <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button
+            type="button"
+            onClick={() => setActiveSubSection('library')}
+            className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+              activeSubSection === 'library'
+                ? 'bg-emerald-600 text-white shadow-sm font-black'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Dumbbell className="w-3.5 h-3.5" />
+            <span>Biblioteca de Exercícios</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubSection('audit')}
+            className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+              activeSubSection === 'audit'
+                ? 'bg-emerald-600 text-white shadow-sm font-black'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+            <span>Auditoria da Biblioteca</span>
+          </button>
+        </div>
+
+        <span className="text-xs text-slate-500 hidden sm:inline">
+          {activeSubSection === 'library' ? 'Gestão e cadastro de exercícios' : 'Auditoria biomecânica e integridade de mídias'}
+        </span>
+      </div>
+
+      {activeSubSection === 'audit' ? (
+        <TrainerLibraryAuditTab
+          onPreviewExerciseVideo={onPreviewExerciseVideo}
+          onOpenEditExercise={(ex, initialTab) => handleOpenEditModal(ex, initialTab)}
+          onOpenCreateExercise={handleOpenCreateModal}
+          onSwitchToCatalogManager={() => setActiveSubSection('library')}
+        />
+      ) : (
+        <>
+          {/* ========================================================================= */}
+          {/* 1. TOP BANNER & MÉTRICAS REAIS DA CENTRAL DE EXERCÍCIOS                   */}
+          {/* ========================================================================= */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/40">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="space-y-1 max-w-xl">
             <div className="flex items-center gap-2 flex-wrap">
@@ -782,6 +836,8 @@ export const TrainerExercisesTab: React.FC<TrainerExercisesTabProps> = ({
             );
           })}
         </div>
+      )}
+        </>
       )}
 
       {/* ========================================================================= */}

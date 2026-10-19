@@ -6,6 +6,7 @@ export const STUDENTS_STORAGE_KEY = 'mf_treino_students_directory_v1';
  * Retorna todos os alunos/fichas salvos localmente
  */
 export function getSavedStudents(): SavedStudentWorkout[] {
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STUDENTS_STORAGE_KEY);
     if (!raw) return [];

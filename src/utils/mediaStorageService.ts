@@ -131,6 +131,41 @@ export async function getMediaFromIndexedDB(id: string): Promise<StoredMediaFile
 }
 
 /**
+ * Obtém todos os arquivos de mídia armazenados no IndexedDB
+ */
+export async function getAllMediaFilesFromIndexedDB(): Promise<StoredMediaFile[]> {
+  try {
+    const db = await openMediaDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error || new Error('Falha ao listar arquivos do IndexedDB.'));
+    });
+  } catch (err) {
+    console.warn('Erro ao ler todos os arquivos do IndexedDB:', err);
+    return [];
+  }
+}
+
+/**
+ * Insere ou restaura um arquivo de mídia no IndexedDB preservando integridade
+ */
+export async function putRawMediaFileToIndexedDB(item: StoredMediaFile): Promise<void> {
+  const db = await openMediaDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.put(item);
+
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error || new Error('Falha ao gravar item no IndexedDB.'));
+  });
+}
+
+/**
  * Resolve uma URL customizada (indexeddb://id) para um Blob URL utilizável em tags <img> ou <video>
  */
 export async function resolveIndexedDbMediaUrl(rawUrl: string): Promise<string> {

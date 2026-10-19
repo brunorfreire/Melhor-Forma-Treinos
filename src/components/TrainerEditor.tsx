@@ -76,7 +76,7 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
   onBackToCatalog
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => isTrainerAuthenticated());
-  const [activeAdminTab, setActiveAdminTab] = useState<'catalog' | 'exercises' | 'video_validator' | 'musclewiki' | 'student_sheet'>('catalog');
+  const [activeAdminTab, setActiveAdminTab] = useState<'catalog' | 'exercises' | 'audit' | 'video_validator' | 'musclewiki' | 'student_sheet'>('catalog');
   const [activeSessionIndex, setActiveSessionIndex] = useState(0);
   const [savedCount, setSavedCount] = useState(() => getSavedStudents().length);
   const [justSavedNotice, setJustSavedNotice] = useState(false);
@@ -482,6 +482,18 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveAdminTab('audit')}
+            className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+              activeAdminTab === 'audit'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span>Auditoria da Biblioteca</span>
+          </button>
+
+          <button
             onClick={() => setActiveAdminTab('video_validator')}
             className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
               activeAdminTab === 'video_validator'
@@ -533,6 +545,14 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
 
         {activeAdminTab === 'exercises' && (
           <TrainerExercisesTab
+            initialSubSection="library"
+            onPreviewExerciseVideo={onPreviewExercise}
+          />
+        )}
+
+        {activeAdminTab === 'audit' && (
+          <TrainerExercisesTab
+            initialSubSection="audit"
             onPreviewExerciseVideo={onPreviewExercise}
           />
         )}
