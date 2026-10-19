@@ -1155,25 +1155,12 @@ TO authenticated
 USING (public.current_app_role() IN ('trainer', 'admin'))
 WITH CHECK (public.current_app_role() IN ('trainer', 'admin'));
 
--- Carga inicial de vínculo explícito para os 13 arquivos físicos originais
-INSERT INTO public.exercise_media_assets (exercise_id, bucket_id, storage_path, file_name, mime_type, is_approved, access_tier)
-VALUES
-  ('ex-agachamento-sumo-halter', 'exercise-media-public', 'agachamento-sumo-halter.webp', 'agachamento-sumo-halter.webp', 'image/webp', true, 'public'),
-  ('ex-agachamento-sumo-halter', 'exercise-media-public', 'agachamento-sumo-halter.gif', 'agachamento-sumo-halter.gif', 'image/gif', true, 'public'),
-  ('ex-elevacao-pelvica-unilateral', 'exercise-media-public', 'elevacao-pelvica-unilateral.webp', 'elevacao-pelvica-unilateral.webp', 'image/webp', true, 'public'),
-  ('ex-elevacao-pelvica-unilateral', 'exercise-media-public', 'elevacao-pelvica-unilateral.gif', 'elevacao-pelvica-unilateral.gif', 'image/gif', true, 'public'),
-  ('ex-flexao-braco-inclinada', 'exercise-media-public', 'flexao-braco-inclinada.webp', 'flexao-braco-inclinada.webp', 'image/webp', true, 'public'),
-  ('ex-remada-curvada-halteres', 'exercise-media-public', 'remada-curvada-halteres.webp', 'remada-curvada-halteres.webp', 'image/webp', true, 'public'),
-  ('ex-remada-curvada-halteres', 'exercise-media-public', 'remada-curvada-halteres.gif', 'remada-curvada-halteres.gif', 'image/gif', true, 'public'),
-  ('ex-subida-step-degrau', 'exercise-media-public', 'subida-step-degrau.webp', 'subida-step-degrau.webp', 'image/webp', true, 'public'),
-  ('ex-subida-step-degrau', 'exercise-media-public', 'subida-step-degrau.gif', 'subida-step-degrau.gif', 'image/gif', true, 'public'),
-  -- Exercício exclusivo Premium (w-sup-06): bucket fechado, tier premium
-  ('ex-triceps-frances-halter', 'exercise-media-premium', 'triceps-frances-halter.webp', 'triceps-frances-halter.webp', 'image/webp', true, 'premium'),
-  ('ex-triceps-frances-halter', 'exercise-media-premium', 'triceps-frances-halter.gif', 'triceps-frances-halter.gif', 'image/gif', true, 'premium'),
-  -- Exercício pendente/sem vínculo a treinos: bucket fechado, is_approved = false
-  ('ex-mesa-flexora', 'exercise-media-premium', 'mesa-flexora.webp', 'mesa-flexora.webp', 'image/webp', false, 'premium'),
-  ('ex-mesa-flexora', 'exercise-media-premium', 'mesa-flexora.gif', 'mesa-flexora.gif', 'image/gif', false, 'premium')
-ON CONFLICT (storage_path) DO NOTHING;
+-- CADASTRO DIFERIDO DOS 13 ARQUIVOS ORIGINAIS
+-- Não inserir exercise_media_assets neste DDL: seus registros referenciam
+-- central_exercises, que será preenchida somente após os testes de RLS.
+-- Executar a carga de associações de mídia em uma migração de dados posterior,
+-- validando existência de exercício, bucket, objeto físico e aprovação técnica.
+-- Nenhuma mídia é marcada automaticamente como aprovada durante criação do esquema.
 
 -- ---------------------------------------------------------------------
 -- POLÍTICAS DE ACESSO DO STORAGE (SELECT) - BASEADAS EM VÍNCULO DETERMINÍSTICO
