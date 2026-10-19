@@ -1,0 +1,5 @@
+{
+  "summary": "Esquema SQL auditado e definitivo para implantação no Supabase com correção de todas as falhas bloqueantes: políticas explícitas de INSERT/UPDATE/DELETE em registros de auditoria, promoção do primeiro administrador imune a bloqueios de trigger, revogação em tempo real, tabela user_entitlements para controle de compras/reembolsos, preservação de ausência de autor nas 32 aprovações legadas, compatibilidade bidirecional de esquema para central_exercises, e buckets de storage particionados.",
+  "updatedAt": "2026-10-19T02:17:00.422338562Z",
+  "userFacing": true
+}

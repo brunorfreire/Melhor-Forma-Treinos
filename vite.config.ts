@@ -65,6 +65,37 @@ export default defineConfig(() => {
           enabled: false,
         },
       }),
+      {
+        name: 'exercise-media-protection',
+        configureServer(server) {
+          const PUBLIC_APPROVED = [
+            'agachamento-sumo-halter',
+            'elevacao-pelvica-unilateral',
+            'flexao-braco-inclinada',
+            'remada-curvada-halteres',
+            'subida-step-degrau'
+          ];
+          server.middlewares.use((req, res, next) => {
+            if (req.url && req.url.startsWith('/exercises/')) {
+              const file = req.url.replace(/^\/exercises\//, '').split('?')[0];
+              const baseName = file.replace(/\.[^.]+$/, '');
+              if (!PUBLIC_APPROVED.includes(baseName)) {
+                const auth = req.headers['authorization'];
+                if (!auth || !auth.startsWith('Bearer ')) {
+                  res.statusCode = 403;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({
+                    error: 'ACCESS_DENIED',
+                    message: 'Mídia exclusiva Premium protegida contra acesso público'
+                  }));
+                  return;
+                }
+              }
+            }
+            next();
+          });
+        }
+      }
     ],
     resolve: {
       alias: {

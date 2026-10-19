@@ -239,7 +239,7 @@ export function validateMediaFile(file: File): { valid: boolean; error?: string;
  * - Se Supabase Storage estiver conectado com credenciais válidas, envia para o bucket 'exercise-media'.
  * - Caso contrário (desacoplado / offline), persiste com total fidelidade no IndexedDB do navegador.
  */
-export async function uploadExerciseMedia(file: File): Promise<UploadResult> {
+export async function uploadExerciseMedia(file: File, options?: { isPremium?: boolean }): Promise<UploadResult> {
   const validation = validateMediaFile(file);
   if (!validation.valid) {
     return {
@@ -259,8 +259,12 @@ export async function uploadExerciseMedia(file: File): Promise<UploadResult> {
       const SUPABASE_URL = supabaseStatus.url;
       const SUPABASE_KEY = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_SUPABASE_ANON_KEY || '') : '';
 
-      const uploadEndpoint = `${SUPABASE_URL}/storage/v1/object/exercise-media/${fileName}`;
-      const res = await fetch(uploadEndpoint, {
+      const isMp4 = validation.mediaType === 'video' || file.name.endsWith('.mp4');
+      const targetBucket = options?.isPremium || isMp4 ? 'exercise-media-premium' : 'exercise-media-public';
+
+      // 1. Tenta bucket particionado
+      let uploadEndpoint = `${SUPABASE_URL}/storage/v1/object/${targetBucket}/${fileName}`;
+      let res = await fetch(uploadEndpoint, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_KEY,
@@ -270,8 +274,27 @@ export async function uploadExerciseMedia(file: File): Promise<UploadResult> {
         body: file
       });
 
+      // 2. Se falhar, tenta bucket legado 'exercise-media'
+      let usedBucket = targetBucket;
+      if (!res.ok) {
+        uploadEndpoint = `${SUPABASE_URL}/storage/v1/object/exercise-media/${fileName}`;
+        const fallbackRes = await fetch(uploadEndpoint, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': file.type || 'application/octet-stream'
+          },
+          body: file
+        });
+        if (fallbackRes.ok) {
+          res = fallbackRes;
+          usedBucket = 'exercise-media';
+        }
+      }
+
       if (res.ok) {
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/exercise-media/${fileName}`;
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${usedBucket}/${fileName}`;
         return {
           success: true,
           url: publicUrl,

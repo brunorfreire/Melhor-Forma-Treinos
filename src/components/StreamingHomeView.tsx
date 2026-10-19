@@ -110,7 +110,10 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
   const allStreamSessions: CollectionWorkoutSession[] = useMemo(() => {
     // Todos os 72 treinos do catálogo organizados com suas fotos e metadados individuais
     const catalogSessionsMapped: CollectionWorkoutSession[] = catalogWorkouts.map(w => {
-      const hydrated = getHydratedWorkout(w.id);
+      const accessLevel = w.accessLevel || (DEFAULT_FREE_WORKOUT_IDS.includes(w.id) ? 'free' : 'premium');
+      const isFree = accessLevel === 'free';
+      // Para vitrine pública, não expõe prescrições de treinos Premium antes da autorização real
+      const hydrated = isFree ? getHydratedWorkout(w.id) : null;
       const exercises = hydrated ? hydrated.exercises : [];
       const levelId = w.level === 'iniciante' ? 'nivel-1' : w.level === 'intermediario' ? 'nivel-2' : 'nivel-3';
       const pillarId = w.category === 'forca_40_plus' ? 'forca' :

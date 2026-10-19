@@ -70,6 +70,41 @@ app.get('/api/musclewiki/search', async (req, res) => {
   }
 });
 
+/**
+ * Proteção de Mídias Estáticas Físicas (/exercises/)
+ * - Arquivos associados a treinos gratuitos aprovados são públicos (demonstração gratuita).
+ * - Arquivos exclusivos de treinos Premium (ex: triceps-frances-halter) ou não aprovados (ex: mesa-flexora)
+ *   são estritamente bloqueados para acessos anônimos não autorizados (retornam 403 Forbidden).
+ */
+const PUBLIC_APPROVED_MEDIA = [
+  'agachamento-sumo-halter',
+  'elevacao-pelvica-unilateral',
+  'flexao-braco-inclinada',
+  'remada-curvada-halteres',
+  'subida-step-degrau'
+];
+
+app.use('/exercises', (req, res, next) => {
+  const filePath = req.path.replace(/^\//, '');
+  const baseName = filePath.replace(/\.[^.]+$/, '');
+
+  // Arquivos públicos aprovados são liberados para consumo na vitrine
+  if (PUBLIC_APPROVED_MEDIA.includes(baseName)) {
+    return next();
+  }
+
+  // Mídias exclusivas Premium ou pendentes exigem token de autorização
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(403).json({
+      error: 'ACCESS_DENIED',
+      message: 'Mídia protegida. O acesso a exercícios exclusivos Premium ou pendentes de validação requer autenticação com assinatura ativa ou compra avulsa.'
+    });
+  }
+
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get('*', (req, res) => {

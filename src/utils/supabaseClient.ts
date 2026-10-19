@@ -74,6 +74,17 @@ export function storeSession(session: AuthSession | null): void {
 }
 
 /**
+ * Retorna o token JWT válido da sessão autenticada real
+ */
+export function getValidSessionToken(): string | null {
+  const session = getStoredSession();
+  if (session && !session.isDevFallback && session.token) {
+    return session.token;
+  }
+  return null;
+}
+
+/**
  * Login de usuário com e-mail e senha
  */
 export async function loginUser(email: string, password: string): Promise<{ success: boolean; session?: AuthSession; error?: string }> {
@@ -122,9 +133,9 @@ export async function loginUser(email: string, password: string): Promise<{ succ
         console.warn('Erro ao consultar perfil no Supabase:', profileErr);
       }
 
-      // Se não encontrou na tabela profiles, consulta metadados seguros
-      if (userRole === 'student' && (data.user.user_metadata?.app_role === 'trainer' || data.user.user_metadata?.app_role === 'admin')) {
-        userRole = data.user.user_metadata.app_role;
+      // Segurança: consulta exclusivamente app_metadata do servidor (NUNCA user_metadata que é editável pelo cliente)
+      if (userRole === 'student' && (data.user.app_metadata?.app_role === 'trainer' || data.user.app_metadata?.app_role === 'admin')) {
+        userRole = data.user.app_metadata.app_role;
       }
 
       const userProfile: UserProfile = {
@@ -132,8 +143,9 @@ export async function loginUser(email: string, password: string): Promise<{ succ
         nome: data.user.user_metadata?.nome || email.split('@')[0],
         email: data.user.email,
         role: userRole,
+        cref: userCref,
         created_at: data.user.created_at,
-        subscription_status: data.user.user_metadata?.subscription_status || 'free'
+        subscription_status: data.user.app_metadata?.subscription_status || 'free'
       };
 
       const session: AuthSession = {

@@ -178,7 +178,7 @@ export interface HydratedWorkoutSession {
 /* ========================================================================= */
 
 export type UserRole = 'student' | 'trainer' | 'admin';
-export type SubscriptionStatus = 'free' | 'active' | 'canceled' | 'past_due' | 'trialing';
+export type SubscriptionStatus = 'free' | 'active' | 'canceled' | 'past_due' | 'trialing' | 'refunded';
 
 export interface UserProfile {
   id: string;
@@ -186,6 +186,7 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   avatar_url?: string;
+  cref?: string;
   created_at: string;
   subscription_status?: SubscriptionStatus;
 }

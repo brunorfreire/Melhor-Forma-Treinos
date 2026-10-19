@@ -13,7 +13,8 @@ import {
 } from '../types';
 import { CENTRAL_EXERCISES } from './centralExercises';
 import { INITIAL_CATALOG_WORKOUTS, CATALOG_COLLECTIONS } from './catalogWorkouts';
-import { INITIAL_WORKOUT_EXERCISES } from './workoutExercises';
+import { FREE_WORKOUT_EXERCISES } from './freeWorkoutExercises';
+import { getSupabaseConfigStatus, getValidSessionToken } from '../utils/supabaseClient';
 
 const WORKOUTS_STORAGE_KEY = 'mf_catalog_workouts_v2';
 const EXERCISES_STORAGE_KEY = 'mf_central_exercises_v2';
@@ -85,7 +86,7 @@ export function saveAllCentralExercises(exercises: CentralExercise[]): void {
  * Obtém as relações entre treinos e exercícios
  */
 export function getAllWorkoutExerciseItems(): WorkoutExerciseItem[] {
-  if (typeof window === 'undefined') return [...INITIAL_WORKOUT_EXERCISES];
+  if (typeof window === 'undefined') return [...FREE_WORKOUT_EXERCISES];
   try {
     const saved = localStorage.getItem(RELATIONS_STORAGE_KEY);
     if (saved) {
@@ -97,7 +98,7 @@ export function getAllWorkoutExerciseItems(): WorkoutExerciseItem[] {
   } catch (e) {
     console.warn('Erro ao carregar relações treino-exercício:', e);
   }
-  return [...INITIAL_WORKOUT_EXERCISES];
+  return [...FREE_WORKOUT_EXERCISES];
 }
 
 /**
@@ -116,10 +117,35 @@ export function saveAllWorkoutExerciseItems(items: WorkoutExerciseItem[]): void 
  * Hidrata uma sessão do catálogo, unindo o treino, a lista ordenada de exercícios
  * e os dados completos de instrução técnica e vídeo da biblioteca central.
  */
-export function getHydratedWorkout(workoutId: string): HydratedWorkoutSession | null {
+export function getHydratedWorkout(
+  workoutId: string,
+  options?: {
+    allowPremium?: boolean;
+    userStatus?: SubscriptionStatus;
+    userRole?: UserRole;
+    purchasedWorkoutIds?: string[];
+  }
+): HydratedWorkoutSession | null {
   const workouts = getAllCatalogWorkouts();
   const workout = workouts.find(w => w.id === workoutId);
   if (!workout) return null;
+
+  // Se o treino for Premium e o chamador não possuir permissão confirmada,
+  // NÃO retorna as prescrições de exercícios, séries e repetições
+  if (workout.accessLevel === 'premium' && !options?.allowPremium) {
+    const isAuthorized = canUserAccessWorkout(
+      workout, 
+      options?.userStatus, 
+      options?.userRole, 
+      options?.purchasedWorkoutIds
+    );
+    if (!isAuthorized) {
+      return {
+        workout,
+        exercises: []
+      };
+    }
+  }
 
   const relations = getAllWorkoutExerciseItems();
   const centralExercises = getAllCentralExercises();
@@ -176,22 +202,160 @@ export function getHydratedWorkout(workoutId: string): HydratedWorkoutSession | 
 }
 
 /**
+ * Busca de forma segura e autenticada a prescrição completa de um treino no Supabase.
+ * Para treinos Premium, as prescrições (itens, repetições, cargas e vídeos exclusivos)
+ * são protegidas por Row-Level Security no backend e só são retornadas para usuários autorizados.
+ */
+export async function fetchAuthenticatedWorkoutSession(
+  workoutId: string,
+  token?: string
+): Promise<HydratedWorkoutSession | null> {
+  const status = getSupabaseConfigStatus();
+
+  // 1. Quando Supabase estiver conectado, lê direto da nuvem com token verificado
+  if (status.isConfigured && status.url) {
+    try {
+      const anonKey = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_SUPABASE_ANON_KEY || '') : '';
+      const authToken = token || getValidSessionToken() || anonKey;
+
+      // Busca dados de vitrine do treino
+      const workoutRes = await fetch(`${status.url}/rest/v1/catalog_workouts?id=eq.${workoutId}&select=*`, {
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      if (!workoutRes.ok) return null;
+      const workoutData = await workoutRes.json();
+      if (!Array.isArray(workoutData) || workoutData.length === 0) return null;
+      const raw = workoutData[0];
+      const remoteWorkout: CatalogWorkout = {
+        id: raw.id,
+        title: raw.title,
+        description: raw.description,
+        category: raw.category,
+        level: raw.level,
+        duration: raw.duration,
+        equipments: raw.equipments || [],
+        objective: raw.objective,
+        coverImage: raw.cover_image,
+        photoAlt: raw.photo_alt,
+        modelGender: raw.model_gender,
+        modelAgeGroup: raw.model_age_group,
+        authorTrainer: raw.author_trainer,
+        status: raw.status,
+        accessLevel: raw.access_level,
+        updatedAt: raw.updated_at || raw.updatedAt || new Date().toISOString()
+      };
+
+      // Busca itens de prescrição (RLS filtra no servidor: treinos Premium sem token ativo retornam [])
+      const itemsRes = await fetch(`${status.url}/rest/v1/workout_exercise_items?workout_id=eq.${workoutId}&select=*&order=item_order.asc`, {
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      if (!itemsRes.ok) return { workout: remoteWorkout, exercises: [] };
+      const itemsData = await itemsRes.json();
+      if (!Array.isArray(itemsData) || itemsData.length === 0) {
+        // Se for treino Premium e não retornou itens, o acesso foi protegido pelo servidor RLS
+        return { workout: remoteWorkout, exercises: [] };
+      }
+
+      // Busca exercícios centrais correspondentes
+      const exerciseIds = itemsData.map((it: any) => it.exercise_id);
+      const exercisesRes = await fetch(`${status.url}/rest/v1/central_exercises?id=in.(${exerciseIds.join(',')})&select=*`, {
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      const exercisesData = exercisesRes.ok ? await exercisesRes.json() : [];
+      const exercisesMap = new Map<string, any>(exercisesData.map((e: any) => [e.id, e]));
+
+      const hydratedExercises: (Exercise & {
+        centralDetails?: CentralExercise;
+        order: number;
+        alternativeDetails?: CentralExercise;
+        alternativeNotes?: string;
+      })[] = itemsData.map((rel: any, index: number) => {
+        const central = exercisesMap.get(rel.exercise_id);
+        return {
+          id: `ex-run-${workoutId}-${index}-${rel.exercise_id}`,
+          centralExerciseId: rel.exercise_id,
+          name: central ? central.name : `Exercício (${rel.exercise_id})`,
+          muscleGroup: central ? (central.muscle_group || central.target_muscle) : 'Geral',
+          sets: rel.sets,
+          reps: rel.reps,
+          rest: rel.rest,
+          weight: rel.load || '',
+          notes: rel.notes || (central ? central.instructions : ''),
+          instructions: central ? central.instructions : '',
+          cautions: central ? central.cautions : '',
+          youtubeId: central ? central.youtube_id : undefined,
+          videoUrl: central ? central.video_url : undefined,
+          fallbackMediaUrl: central ? central.fallback_media_url : undefined,
+          mediaType: central ? central.media_type : undefined,
+          thumbnailUrl: central?.thumbnail_url || '',
+          hasNoVideo: central ? central.video_validation_status === 'sem_video' : false,
+          movementPattern: central?.movement_pattern,
+          equipment: central?.equipment,
+          videoValidationStatus: central?.video_validation_status,
+          licenseSource: central?.license_source,
+          centralDetails: central,
+          order: rel.item_order,
+          alternativeNotes: rel.alternative_notes
+        };
+      });
+
+      return {
+        workout: remoteWorkout,
+        exercises: hydratedExercises
+      };
+    } catch (err) {
+      console.warn('Erro ao carregar treino autenticado do Supabase:', err);
+    }
+  }
+
+  // 2. Fallback local para desenvolvimento e modo offline
+  return getHydratedWorkout(workoutId, {
+    allowPremium: false,
+    userStatus: 'free',
+    userRole: 'student'
+  });
+}
+
+/**
  * Verifica se um usuário possui autorização para executar um treino específico.
- * Não confia exclusivamente em estado do frontend: valida explicitamente o nível de acesso.
+ * Não confia exclusivamente em estado do frontend: valida explicitamente o nível de acesso
+ * e diferencia assinaturas globais de compras avulsas por resource_id.
  */
 export function canUserAccessWorkout(
   workout: CatalogWorkout, 
   userStatus?: SubscriptionStatus,
-  userRole?: UserRole
+  userRole?: UserRole,
+  purchasedWorkoutIds?: string[]
 ): boolean {
   // Treinos gratuitos são liberados para todos (com ou sem login)
   if (workout.accessLevel === 'free') return true;
 
+  // Reembolsados ou cancelados perdem acesso imediatamente (exceto staff)
+  if (userStatus === 'refunded' || userStatus === 'canceled') {
+    if (userRole !== 'trainer' && userRole !== 'admin') return false;
+  }
+
   // Treinador e Administrador possuem acesso total irrestrito
   if (userRole === 'trainer' || userRole === 'admin') return true;
 
-  // Assinantes com status ativo ou em período de testes
-  return userStatus === 'active' || userStatus === 'trialing';
+  // Assinantes com status ativo ou em período de testes (direito global)
+  if (userStatus === 'active' || userStatus === 'trialing') return true;
+
+  // Compra avulsa do treino específico (autorização por recurso)
+  if (purchasedWorkoutIds && purchasedWorkoutIds.includes(workout.id)) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -202,15 +366,21 @@ export function canUserAccessWorkout(
 export function convertCatalogWorkoutToWorkoutPlan(
   workout: CatalogWorkout,
   userStatus?: SubscriptionStatus,
-  userRole?: UserRole
+  userRole?: UserRole,
+  purchasedWorkoutIds?: string[]
 ): WorkoutPlan | null {
   // Barreira de segurança: impede execução de treinos protegidos sem permissão
-  if (!canUserAccessWorkout(workout, userStatus, userRole)) {
-    console.warn(`[Acesso Bloqueado] Tentativa de executar treino Premium (${workout.id}) sem assinatura ativa.`);
+  if (!canUserAccessWorkout(workout, userStatus, userRole, purchasedWorkoutIds)) {
+    console.warn(`[Acesso Bloqueado] Tentativa de executar treino Premium (${workout.id}) sem autorização confirmada.`);
     return null;
   }
 
-  const hydrated = getHydratedWorkout(workout.id);
+  const hydrated = getHydratedWorkout(workout.id, {
+    allowPremium: true,
+    userStatus,
+    userRole,
+    purchasedWorkoutIds
+  });
   const exercisesList: Exercise[] = hydrated ? hydrated.exercises : [];
 
   const session: WorkoutSession = {

@@ -5,7 +5,7 @@ import { decodeWorkoutPlan } from './utils/codec';
 import { StreamingHomeView } from './components/StreamingHomeView';
 import { Collection40PlusView } from './components/Collection40PlusView';
 import { StudentWorkoutView } from './components/StudentWorkoutView';
-import { TrainerEditor } from './components/TrainerEditor';
+const TrainerEditor = React.lazy(() => import('./components/TrainerEditor').then(m => ({ default: m.TrainerEditor })));
 import { ShareModal } from './components/ShareModal';
 import { HostingerGuideModal } from './components/HostingerGuideModal';
 import { MuscleWikiModal } from './components/MuscleWikiModal';
@@ -328,16 +328,18 @@ export default function App() {
       )}
 
       {viewMode === 'editor' && (
-        <TrainerEditor
-          plan={plan}
-          onChangePlan={handleUpdatePlan}
-          onViewAsStudent={() => setViewMode('student')}
-          onOpenShareModal={() => setIsShareModalOpen(true)}
-          onOpenHostingerGuide={() => setIsHostingerModalOpen(true)}
-          onPreviewExercise={(ex) => setPreviewExercise(ex)}
-          onOpenStudentHistory={() => setIsHistoryModalOpen(true)}
-          onBackToCatalog={() => setViewMode('home')}
-        />
+        <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Carregando painel do treinador...</div>}>
+          <TrainerEditor
+            plan={plan}
+            onChangePlan={handleUpdatePlan}
+            onViewAsStudent={() => setViewMode('student')}
+            onOpenShareModal={() => setIsShareModalOpen(true)}
+            onOpenHostingerGuide={() => setIsHostingerModalOpen(true)}
+            onPreviewExercise={(ex) => setPreviewExercise(ex)}
+            onOpenStudentHistory={() => setIsHistoryModalOpen(true)}
+            onBackToCatalog={() => setViewMode('home')}
+          />
+        </React.Suspense>
       )}
 
       {/* ========================================================================= */}
