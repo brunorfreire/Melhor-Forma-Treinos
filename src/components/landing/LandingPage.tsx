@@ -431,9 +431,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="relative aspect-[3/4] overflow-hidden bg-slate-950">
                 <img
                   src={workout.coverImage}
-                  alt={workout.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                  referrerPolicy="no-referrer"
+                  alt={workout.photoAlt || workout.title}
+                  className="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"
                   loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />

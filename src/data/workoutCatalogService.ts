@@ -16,7 +16,7 @@ import { INITIAL_CATALOG_WORKOUTS, CATALOG_COLLECTIONS } from './catalogWorkouts
 import { FREE_WORKOUT_EXERCISES } from './freeWorkoutExercises';
 import { getSupabaseConfigStatus, getValidSessionToken } from '../utils/supabaseClient';
 
-const WORKOUTS_STORAGE_KEY = 'mf_catalog_workouts_v2';
+const WORKOUTS_STORAGE_KEY = 'mf_catalog_workouts_v3';
 const EXERCISES_STORAGE_KEY = 'mf_central_exercises_v2';
 const RELATIONS_STORAGE_KEY = 'mf_workout_exercises_v2';
 
@@ -30,7 +30,25 @@ export function getAllCatalogWorkouts(): CatalogWorkout[] {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        const initialMap = new Map(INITIAL_CATALOG_WORKOUTS.map(w => [w.id, w]));
+        return parsed.map((w: CatalogWorkout) => {
+          const initial = initialMap.get(w.id);
+          if (
+            initial &&
+            (!w.coverImage ||
+              w.coverImage.includes('images.unsplash.com') ||
+              w.coverImage.startsWith('/images/landing/'))
+          ) {
+            return {
+              ...w,
+              coverImage: initial.coverImage,
+              photoAlt: initial.photoAlt,
+              modelGender: initial.modelGender,
+              modelAgeGroup: initial.modelAgeGroup
+            };
+          }
+          return w;
+        });
       }
     }
   } catch (e) {
