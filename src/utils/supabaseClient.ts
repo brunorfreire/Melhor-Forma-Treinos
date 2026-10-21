@@ -1,5 +1,5 @@
 /**
- * ARQUITETURA DE AUTENTICAÇÃO REAL E SEGURANÇA (SUPABASE AUTH)
+ * ARQUITETURA DE AUTENTICAÇÃO REAL E SEGURANÇA (SUPABASE AUTH + OAUTH 2.0 GOOGLE)
  * Melhor Forma Play 40+
  * 
  * Regras Obrigatórias de Produção:
@@ -9,10 +9,14 @@
  *    Detalhes técnicos são registrados exclusivamente no console/ambiente dev.
  * 3. Todas as permissões (app_role e subscription_status) são validadas diretamente no Supabase (public.profiles),
  *    sem confiar em valores manipuláveis no cliente.
- * 4. Exige confirmação real de e-mail antes de liberar o acesso de alunos aos treinos Free.
+ * 4. Exige confirmação real de e-mail antes de liberar o acesso de alunos cadastrados por e-mail/senha,
+ *    e aceita e-mails verificados pelo provedor Google OAuth.
  * 5. Restauração e revalidação viva da sessão no servidor (GET /auth/v1/user) em cada carregamento.
+ * 6. Sistema único de sessão sincronizado na chave local 'mf_play_user_session_auth_v2',
+ *    sem apagar indiscriminadamente outras chaves do localStorage.
  */
 
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { UserProfile, SubscriptionStatus, UserRole } from '../types';
 
 export interface SupabaseConfigStatus {
@@ -21,7 +25,15 @@ export interface SupabaseConfigStatus {
   message: string;
 }
 
+export const SUPABASE_PROJECT_ID = 'fjzikpukrwarjjfwsgek';
+export const PRODUCTION_SITE_URL = 'https://treinos.melhorformateam.com';
+export const SUPABASE_OAUTH_CALLBACK_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/auth/v1/callback`;
+
 export const GENERIC_CONFIG_ERROR = 'O acesso está temporariamente indisponível. Tente novamente mais tarde.';
+
+const LOCAL_SESSION_KEY = 'mf_play_user_session_auth_v2';
+const OAUTH_PENDING_KEY = 'mf_oauth_pending_v1';
+const OAUTH_ORIGIN_VIEW_KEY = 'mf_oauth_origin_view_v1';
 
 function getRuntimeEnv(key: string): string {
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
@@ -63,7 +75,56 @@ export function getSupabaseConfigStatus(): SupabaseConfigStatus {
   };
 }
 
-const LOCAL_SESSION_KEY = 'mf_play_user_session_auth_v2';
+/**
+ * Instância singleton do cliente oficial @supabase/supabase-js
+ * Utilizada para o fluxo oficial signInWithOAuth({ provider: 'google' }),
+ * troca de códigos PKCE/Implicit e renovação segura de token, mantendo
+ * 'mf_play_user_session_auth_v2' como fonte unificada de sessão da aplicação.
+ */
+let supabaseInstance: SupabaseClient | null = null;
+let supabaseInstanceUrl = '';
+
+export function getSupabaseClient(): SupabaseClient | null {
+  const status = getSupabaseConfigStatus();
+  if (!status.isConfigured) return null;
+
+  const url = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
+
+  if (!supabaseInstance || supabaseInstanceUrl !== url) {
+    supabaseInstanceUrl = url;
+    supabaseInstance = createClient(url, anonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
+  }
+
+  return supabaseInstance;
+}
+
+/**
+ * Determina a URL de retorno após autorização OAuth no Google/Supabase.
+ * Em produção no domínio oficial, retorna sempre https://treinos.melhorformateam.com.
+ */
+export function getOAuthRedirectUrl(): string {
+  const customRedirect = getRuntimeEnv('VITE_AUTH_REDIRECT_URL');
+  if (customRedirect && customRedirect.startsWith('http')) {
+    return customRedirect;
+  }
+
+  if (typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname.toLowerCase();
+    if (host === 'treinos.melhorformateam.com' || host.endsWith('.melhorformateam.com')) {
+      return PRODUCTION_SITE_URL;
+    }
+    return window.location.origin;
+  }
+
+  return PRODUCTION_SITE_URL;
+}
 
 export interface AuthSession {
   user: UserProfile;
@@ -73,7 +134,7 @@ export interface AuthSession {
 }
 
 /**
- * Lê a sessão gravada localmente
+ * Lê a sessão gravada localmente na chave oficial mf_play_user_session_auth_v2
  */
 export function getStoredSession(): AuthSession | null {
   if (typeof window === 'undefined') return null;
@@ -93,7 +154,7 @@ export function getStoredSession(): AuthSession | null {
 }
 
 /**
- * Persiste ou remove a sessão local
+ * Persiste ou remove exclusivamente a chave de sessão local, sem afetar outros dados do localStorage
  */
 export function storeSession(session: AuthSession | null): void {
   if (typeof window === 'undefined') return;
@@ -117,38 +178,394 @@ export function getValidSessionToken(): string | null {
 }
 
 /**
- * Consulta de forma autoritativa os dados de perfil no Supabase
+ * Verifica dinamicamente nas configurações públicas do Supabase Auth (/auth/v1/settings)
+ * se o provedor Google OAuth já foi ativado com Client ID e Secret válidos.
  */
-async function fetchAuthoritativeProfile(
-  userId: string, 
-  token: string
-): Promise<{ appRole: UserRole; subscriptionStatus: SubscriptionStatus; nome?: string; cref?: string }> {
+let cachedGoogleProviderEnabled: boolean | null = null;
+let cachedGoogleCheckTimestamp = 0;
+
+export async function checkGoogleProviderEnabled(forceRefresh = false): Promise<{
+  enabled: boolean;
+  checkedLive: boolean;
+}> {
+  const status = getSupabaseConfigStatus();
+  if (!status.isConfigured) {
+    return { enabled: false, checkedLive: false };
+  }
+
+  const now = Date.now();
+  if (!forceRefresh && cachedGoogleProviderEnabled !== null && now - cachedGoogleCheckTimestamp < 30000) {
+    return { enabled: cachedGoogleProviderEnabled, checkedLive: true };
+  }
+
   const supabaseUrl = getSupabaseUrl();
   const supabaseAnonKey = getSupabaseAnonKey();
 
   try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=app_role,subscription_status,nome,cref`, {
+    const res = await fetch(`${supabaseUrl}/auth/v1/settings`, {
       method: 'GET',
       headers: {
-        'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${token}`
+        'apikey': supabaseAnonKey
       }
     });
 
     if (res.ok) {
       const data = await res.json();
+      const isGoogleEnabled = Boolean(data?.external?.google);
+      cachedGoogleProviderEnabled = isGoogleEnabled;
+      cachedGoogleCheckTimestamp = now;
+      return { enabled: isGoogleEnabled, checkedLive: true };
+    }
+  } catch (err) {
+    console.warn('[Supabase OAuth] Não foi possível consultar /auth/v1/settings:', err);
+  }
+
+  return { enabled: false, checkedLive: false };
+}
+
+/**
+ * Traduz códigos de erro OAuth (cancelamento, falha de vinculação, provedor desabilitado)
+ * para mensagens claras e amigáveis em português.
+ */
+function translateOAuthError(errorCode: string, errorDescription: string): string {
+  const code = (errorCode || '').toLowerCase();
+  const desc = decodeURIComponent((errorDescription || '').replace(/\+/g, ' ')).toLowerCase();
+
+  if (
+    code === 'access_denied' ||
+    desc.includes('access_denied') ||
+    desc.includes('user_cancelled') ||
+    desc.includes('canceled') ||
+    desc.includes('cancelled') ||
+    desc.includes('consent_required')
+  ) {
+    return 'Você cancelou a entrada com o Google. Quando quiser, tente novamente ou continue com seu e-mail.';
+  }
+
+  if (
+    desc.includes('provider is not enabled') ||
+    desc.includes('unsupported provider')
+  ) {
+    return 'O login com Google ainda está em fase final de ativação no servidor. Por favor, utilize a opção "Continuar com e-mail".';
+  }
+
+  if (
+    desc.includes('database error saving new user') ||
+    desc.includes('duplicate key') ||
+    desc.includes('unique constraint') ||
+    desc.includes('already registered') ||
+    desc.includes('identity_already_exists')
+  ) {
+    return 'Identificamos que este e-mail já está vinculado a uma conta existente. Por favor, acesse utilizando "Continuar com e-mail".';
+  }
+
+  if (desc.includes('email_not_verified') || desc.includes('unverified email')) {
+    return 'Sua conta do Google precisa ter um endereço de e-mail verificado para acessar a plataforma.';
+  }
+
+  if (code === 'Invalid Refresh Token' || desc.includes('expired') || code === 'otp_expired') {
+    return 'O link de autorização expirou. Por favor, tente entrar novamente.';
+  }
+
+  return 'Não foi possível concluir a autenticação com o Google. Tente novamente ou entre com seu e-mail e senha.';
+}
+
+/**
+ * Inspeciona a URL atual em busca de parâmetros de retorno do fluxo OAuth 2.0
+ * (erros, cancelamentos, access_token no hash ou code PKCE na query string)
+ * e limpa a barra de endereços sem recarregar a página.
+ */
+function inspectOAuthCallbackUrl(): {
+  hasOAuthError: boolean;
+  oauthErrorMsg?: string;
+  hasOAuthTokens: boolean;
+  hashAccessToken?: string;
+  hashRefreshToken?: string;
+  hashExpiresAt?: number;
+  pkceCode?: string;
+  isRecoveryFlow?: boolean;
+  originView?: 'login' | 'register';
+} {
+  if (typeof window === 'undefined') {
+    return { hasOAuthError: false, hasOAuthTokens: false };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const rawHash = window.location.hash.startsWith('#')
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  // Trata hashes que não sejam rotas SPA (ex: #/entrar)
+  const hashParams = new URLSearchParams(rawHash.startsWith('/') ? '' : rawHash);
+
+  const originViewRaw = sessionStorage.getItem(OAUTH_ORIGIN_VIEW_KEY);
+  const originView: 'login' | 'register' = originViewRaw === 'register' ? 'register' : 'login';
+
+  // 1. Verifica erro ou cancelamento OAuth
+  const error = searchParams.get('error') || hashParams.get('error');
+  const errorCode = searchParams.get('error_code') || hashParams.get('error_code') || '';
+  const errorDescription = searchParams.get('error_description') || hashParams.get('error_description') || '';
+
+  if (error) {
+    sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    sessionStorage.removeItem(OAUTH_ORIGIN_VIEW_KEY);
+
+    // Limpa os parâmetros de erro da URL
+    try {
+      const cleanPath = window.location.pathname || '/';
+      window.history.replaceState(null, '', cleanPath);
+    } catch {}
+
+    return {
+      hasOAuthError: true,
+      oauthErrorMsg: translateOAuthError(error || errorCode, errorDescription),
+      hasOAuthTokens: false,
+      originView
+    };
+  }
+
+  // 2. Verifica tokens no fragmento (#access_token=...) ou código PKCE (?code=...)
+  const hashAccessToken = hashParams.get('access_token') || undefined;
+  const hashRefreshToken = hashParams.get('refresh_token') || undefined;
+  const expiresAtParam = hashParams.get('expires_at');
+  const expiresInParam = hashParams.get('expires_in');
+  const authType = hashParams.get('type') || searchParams.get('type') || '';
+  const pkceCode = searchParams.get('code') || undefined;
+
+  let hashExpiresAt: number | undefined;
+  if (expiresAtParam) {
+    hashExpiresAt = Number(expiresAtParam) * 1000;
+  } else if (expiresInParam) {
+    hashExpiresAt = Date.now() + Number(expiresInParam) * 1000;
+  }
+
+  const hasOAuthTokens = Boolean(hashAccessToken || pkceCode);
+
+  if (hasOAuthTokens) {
+    sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    sessionStorage.removeItem(OAUTH_ORIGIN_VIEW_KEY);
+  }
+
+  return {
+    hasOAuthError: false,
+    hasOAuthTokens,
+    hashAccessToken,
+    hashRefreshToken,
+    hashExpiresAt,
+    pkceCode,
+    isRecoveryFlow: authType === 'recovery',
+    originView
+  };
+}
+
+/**
+ * Inicia o fluxo oficial de autenticação OAuth 2.0 com Google via Supabase Auth:
+ * supabase.auth.signInWithOAuth({ provider: 'google' })
+ */
+export async function signInWithGoogle(
+  originView: 'login' | 'register' = 'login'
+): Promise<{
+  success: boolean;
+  providerNotConfigured?: boolean;
+  error?: string;
+}> {
+  const status = getSupabaseConfigStatus();
+  if (!status.isConfigured) {
+    console.error('[Supabase Auth] VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não configuradas.');
+    return {
+      success: false,
+      error: GENERIC_CONFIG_ERROR
+    };
+  }
+
+  // Verifica se o provedor Google está habilitado no projeto Supabase antes de redirecionar
+  const providerStatus = await checkGoogleProviderEnabled(true);
+  if (!providerStatus.enabled) {
+    return {
+      success: false,
+      providerNotConfigured: true,
+      error: 'O acesso com Google está aguardando a conclusão da configuração do provedor no painel Supabase. Por enquanto, escolha "Continuar com e-mail".'
+    };
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return {
+      success: false,
+      error: GENERIC_CONFIG_ERROR
+    };
+  }
+
+  try {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(OAUTH_PENDING_KEY, '1');
+      sessionStorage.setItem(OAUTH_ORIGIN_VIEW_KEY, originView);
+    }
+
+    const redirectTo = getOAuthRedirectUrl();
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        queryParams: {
+          prompt: 'select_account'
+        }
+      }
+    });
+
+    if (error) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(OAUTH_PENDING_KEY);
+        sessionStorage.removeItem(OAUTH_ORIGIN_VIEW_KEY);
+      }
+      return {
+        success: false,
+        error: translateOAuthError(error.name || '', error.message || '')
+      };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(OAUTH_PENDING_KEY);
+      sessionStorage.removeItem(OAUTH_ORIGIN_VIEW_KEY);
+    }
+    return {
+      success: false,
+      error: `Erro ao iniciar conexão com o Google: ${err.message || 'Tente novamente.'}`
+    };
+  }
+}
+
+/**
+ * Consulta de forma autoritativa os dados de perfil na tabela public.profiles.
+ * - NUNCA confia em app_role ou subscription_status vindos do cliente/navegador.
+ * - NUNCA sobrescreve privilégios administrativos (admin/trainer) ou assinaturas existentes.
+ * - Para usuários Google novos cujo nome em public.profiles ficou apenas com o prefixo do e-mail,
+ *   sincroniza de forma segura apenas nome e avatar_url verificados pelo Google.
+ */
+async function fetchAuthoritativeProfile(
+  userId: string, 
+  token: string,
+  authUserData?: {
+    email?: string;
+    user_metadata?: Record<string, any>;
+    app_metadata?: Record<string, any>;
+  }
+): Promise<{
+  appRole: UserRole;
+  subscriptionStatus: SubscriptionStatus;
+  nome?: string;
+  cref?: string;
+  avatarUrl?: string;
+}> {
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+
+  const meta = authUserData?.user_metadata || {};
+  const verifiedGoogleName = String(meta.nome || meta.full_name || meta.name || '').trim();
+  const verifiedGoogleAvatar = String(meta.avatar_url || meta.picture || '').trim();
+  const userEmail = String(authUserData?.email || '').trim().toLowerCase();
+  const emailPrefix = userEmail.includes('@') ? userEmail.split('@')[0] : '';
+
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=id,app_role,subscription_status,nome,cref,avatar_url,email`,
+      {
+        method: 'GET',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+
+    if (res.ok) {
+      const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         const item = data[0];
-        const appRole: UserRole = (item.app_role === 'admin' || item.app_role === 'trainer') ? item.app_role : 'student';
+        const appRole: UserRole =
+          item.app_role === 'admin' || item.app_role === 'trainer' ? item.app_role : 'student';
         const subscriptionStatus: SubscriptionStatus = 
           ['active', 'canceled', 'past_due', 'trialing', 'refunded', 'free'].includes(item.subscription_status)
             ? item.subscription_status
             : 'free';
+
+        let currentNome: string | undefined = item.nome ? String(item.nome).trim() : undefined;
+        let currentAvatar: string | undefined = item.avatar_url ? String(item.avatar_url).trim() : undefined;
+
+        // Se o perfil foi criado pelo trigger apenas com o prefixo do e-mail e o provedor OAuth
+        // forneceu o nome completo verificado, atualiza exclusivamente nome/avatar_url (preservando app_role e subscription_status)
+        const shouldSyncName =
+          verifiedGoogleName.length >= 2 &&
+          (!currentNome || currentNome === emailPrefix);
+        const shouldSyncAvatar = Boolean(verifiedGoogleAvatar && !currentAvatar);
+
+        if (shouldSyncName || shouldSyncAvatar) {
+          const updatePayload: Record<string, string> = {};
+          if (shouldSyncName) {
+            updatePayload.nome = verifiedGoogleName;
+            currentNome = verifiedGoogleName;
+          }
+          if (shouldSyncAvatar) {
+            updatePayload.avatar_url = verifiedGoogleAvatar;
+            currentAvatar = verifiedGoogleAvatar;
+          }
+
+          try {
+            await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${token}`,
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify(updatePayload)
+            });
+          } catch {
+            // Ignora falha silenciosa de sincronização cosmética; perfil autoritativo permanece intacto
+          }
+        }
+
         return {
           appRole,
           subscriptionStatus,
-          nome: item.nome || undefined,
-          cref: item.cref || undefined
+          nome: currentNome || verifiedGoogleName || undefined,
+          cref: item.cref || undefined,
+          avatarUrl: currentAvatar || verifiedGoogleAvatar || undefined
+        };
+      }
+
+      // Caso extremo: usuário recém-autenticado no Supabase Auth mas sem registro em public.profiles
+      // Cria perfil estritamente como student/free com resolução ignore-duplicates para NUNCA sobrescrever conta existente
+      if (Array.isArray(data) && data.length === 0 && userEmail) {
+        const initialName = verifiedGoogleName || emailPrefix || 'Aluno';
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/profiles`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseAnonKey,
+              'Authorization': `Bearer ${token}`,
+              'Prefer': 'resolution=ignore-duplicates,return=minimal'
+            },
+            body: JSON.stringify({
+              id: userId,
+              nome: initialName,
+              email: userEmail,
+              app_role: 'student',
+              subscription_status: 'free',
+              ...(verifiedGoogleAvatar ? { avatar_url: verifiedGoogleAvatar } : {})
+            })
+          });
+        } catch {}
+
+        return {
+          appRole: 'student',
+          subscriptionStatus: 'free',
+          nome: initialName,
+          avatarUrl: verifiedGoogleAvatar || undefined
         };
       }
     }
@@ -156,16 +573,25 @@ async function fetchAuthoritativeProfile(
     console.warn('Não foi possível sincronizar perfil do banco:', err);
   }
 
-  return { appRole: 'student', subscriptionStatus: 'free' };
+  return {
+    appRole: 'student',
+    subscriptionStatus: 'free',
+    nome: verifiedGoogleName || undefined,
+    avatarUrl: verifiedGoogleAvatar || undefined
+  };
 }
 
 /**
- * Validação rigorosa e revalidação viva da sessão junto ao Supabase Auth
+ * Validação rigorosa e revalidação viva da sessão junto ao Supabase Auth.
+ * Processa também retornos de Google OAuth (#access_token ou ?code) e erros/cancelamentos.
  * NUNCA confia apenas na presença de dados em localStorage.
  */
 export async function validateCurrentSession(): Promise<{
   valid: boolean;
   session: AuthSession | null;
+  isOAuthCallback?: boolean;
+  oauthError?: string;
+  oauthOriginView?: 'login' | 'register';
   isEmailUnconfirmed?: boolean;
   error?: string;
 }> {
@@ -178,26 +604,112 @@ export async function validateCurrentSession(): Promise<{
     };
   }
 
-  const stored = getStoredSession();
-  if (!stored || !stored.token) {
-    return { valid: false, session: null };
+  // 1. Verifica se a URL atual é um retorno de fluxo OAuth (erro, cancelamento ou tokens)
+  const oauthOutcome = inspectOAuthCallbackUrl();
+  if (oauthOutcome.hasOAuthError) {
+    return {
+      valid: false,
+      session: null,
+      oauthError: oauthOutcome.oauthErrorMsg,
+      oauthOriginView: oauthOutcome.originView
+    };
   }
 
   const supabaseUrl = getSupabaseUrl();
   const supabaseAnonKey = getSupabaseAnonKey();
+  const supabase = getSupabaseClient();
+
+  let activeToken: string | null = null;
+  let activeExpiresAt: number | undefined;
+  let isOAuthCallback = oauthOutcome.hasOAuthTokens;
+
+  // 2. Se retornou do OAuth com código PKCE (?code=...) ou hash (#access_token=...)
+  if (supabase && oauthOutcome.pkceCode) {
+    try {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(oauthOutcome.pkceCode);
+      if (!error && data?.session?.access_token) {
+        activeToken = data.session.access_token;
+        activeExpiresAt = data.session.expires_at ? Number(data.session.expires_at) * 1000 : undefined;
+      }
+    } catch (e) {
+      console.warn('[Supabase OAuth] Falha ao trocar código PKCE:', e);
+    }
+  }
+
+  if (!activeToken && oauthOutcome.hashAccessToken) {
+    activeToken = oauthOutcome.hashAccessToken;
+    activeExpiresAt = oauthOutcome.hashExpiresAt;
+    if (supabase && oauthOutcome.hashAccessToken && oauthOutcome.hashRefreshToken) {
+      try {
+        await supabase.auth.setSession({
+          access_token: oauthOutcome.hashAccessToken,
+          refresh_token: oauthOutcome.hashRefreshToken
+        });
+      } catch {}
+    }
+  }
+
+  // Se ainda não temos token da URL, verifica se o SDK @supabase/supabase-js capturou/renovou uma sessão
+  if (!activeToken && supabase) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.access_token) {
+        activeToken = data.session.access_token;
+        activeExpiresAt = data.session.expires_at ? Number(data.session.expires_at) * 1000 : undefined;
+      }
+    } catch {}
+  }
+
+  // Fallback para a sessão persistida em mf_play_user_session_auth_v2
+  const stored = getStoredSession();
+  if (!activeToken && stored?.token) {
+    activeToken = stored.token;
+    activeExpiresAt = stored.expiresAt;
+  }
+
+  // Limpa parâmetros sensíveis de OAuth da barra de endereços após leitura
+  if (oauthOutcome.hasOAuthTokens && typeof window !== 'undefined') {
+    try {
+      const cleanPath = window.location.pathname || '/';
+      window.history.replaceState(null, '', cleanPath);
+    } catch {}
+  }
+
+  if (!activeToken) {
+    return { valid: false, session: null };
+  }
 
   try {
-    // 1. Revalidação viva do token com o servidor Supabase Auth
-    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    // 3. Revalidação viva do token com o servidor Supabase Auth
+    let userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
       method: 'GET',
       headers: {
         'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${stored.token}`
+        'Authorization': `Bearer ${activeToken}`
       }
     });
 
+    // Se o token local expirou mas o SDK possui refresh_token válido, tenta renovar
+    if (!userRes.ok && supabase) {
+      try {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (refreshData?.session?.access_token) {
+          activeToken = refreshData.session.access_token;
+          activeExpiresAt = refreshData.session.expires_at
+            ? Number(refreshData.session.expires_at) * 1000
+            : undefined;
+          userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+            method: 'GET',
+            headers: {
+              'apikey': supabaseAnonKey,
+              'Authorization': `Bearer ${activeToken}`
+            }
+          });
+        }
+      } catch {}
+    }
+
     if (!userRes.ok) {
-      // Token expirou ou foi revogado
       storeSession(null);
       return {
         valid: false,
@@ -212,8 +724,18 @@ export async function validateCurrentSession(): Promise<{
       return { valid: false, session: null, error: 'Usuário não encontrado no servidor.' };
     }
 
-    // 2. Validação obrigatória de e-mail confirmado
-    const isEmailConfirmed = Boolean(userData.email_confirmed_at || userData.confirmed_at);
+    // 4. Validação obrigatória de e-mail confirmado (aceitando confirmação por e-mail ou provedor Google verificado)
+    const isGoogleVerified =
+      userData.app_metadata?.provider === 'google' ||
+      (Array.isArray(userData.app_metadata?.providers) && userData.app_metadata.providers.includes('google')) ||
+      userData.user_metadata?.email_verified === true;
+
+    const isEmailConfirmed = Boolean(
+      userData.email_confirmed_at ||
+      userData.confirmed_at ||
+      isGoogleVerified
+    );
+
     if (!isEmailConfirmed) {
       storeSession(null);
       return {
@@ -224,28 +746,38 @@ export async function validateCurrentSession(): Promise<{
       };
     }
 
-    // 3. Consulta autoritativa na tabela public.profiles
-    const profile = await fetchAuthoritativeProfile(userData.id, stored.token);
+    // 5. Consulta autoritativa na tabela public.profiles
+    const profile = await fetchAuthoritativeProfile(userData.id, activeToken, userData);
 
     const refreshedProfile: UserProfile = {
       id: userData.id,
-      nome: profile.nome || userData.user_metadata?.full_name || userData.user_metadata?.nome || userData.email.split('@')[0],
+      nome:
+        profile.nome ||
+        userData.user_metadata?.nome ||
+        userData.user_metadata?.full_name ||
+        userData.user_metadata?.name ||
+        (userData.email ? userData.email.split('@')[0] : 'Aluno'),
       email: userData.email,
       role: profile.appRole,
       cref: profile.cref,
+      avatar_url: profile.avatarUrl || userData.user_metadata?.avatar_url || userData.user_metadata?.picture,
       created_at: userData.created_at,
       subscription_status: profile.subscriptionStatus
     };
 
     const refreshedSession: AuthSession = {
       user: refreshedProfile,
-      token: stored.token,
+      token: activeToken,
       isDevFallback: false,
-      expiresAt: stored.expiresAt
+      expiresAt: activeExpiresAt
     };
 
     storeSession(refreshedSession);
-    return { valid: true, session: refreshedSession };
+    return {
+      valid: true,
+      session: refreshedSession,
+      isOAuthCallback
+    };
   } catch (err: any) {
     return {
       valid: false,
@@ -326,8 +858,19 @@ export async function loginUser(
       };
     }
 
+    // Sincroniza tokens com a instância @supabase/supabase-js sem criar sessões conflitantes
+    const supabase = getSupabaseClient();
+    if (supabase && data.access_token && data.refresh_token) {
+      try {
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token
+        });
+      } catch {}
+    }
+
     // Consulta perfil autoritativo
-    const profile = await fetchAuthoritativeProfile(data.user.id, data.access_token);
+    const profile = await fetchAuthoritativeProfile(data.user.id, data.access_token, data.user);
 
     const userProfile: UserProfile = {
       id: data.user.id,
@@ -335,6 +878,7 @@ export async function loginUser(
       email: data.user.email,
       role: profile.appRole,
       cref: profile.cref,
+      avatar_url: profile.avatarUrl || data.user.user_metadata?.avatar_url,
       created_at: data.user.created_at,
       subscription_status: profile.subscriptionStatus
     };
@@ -354,7 +898,8 @@ export async function loginUser(
 }
 
 /**
- * Cadastro de novo usuário com confirmação obrigatória de e-mail
+ * Cadastro de novo usuário com confirmação obrigatória de e-mail.
+ * Detecta identidades já existentes (identities === []) para impedir contas duplicadas.
  */
 export async function registerUser(
   nome: string, 
@@ -415,7 +960,7 @@ export async function registerUser(
       if (msg.includes('user already registered') || msg.includes('already exists')) {
         return {
           success: false,
-          error: 'Este e-mail já está cadastrado. Por favor, clique em "Já tenho conta / Entrar" ou recupere sua senha.'
+          error: 'Este e-mail já está cadastrado. Por favor, clique em "Já tenho conta" para entrar ou recuperar sua senha.'
         };
       }
       if (msg.includes('rate limit')) {
@@ -425,6 +970,15 @@ export async function registerUser(
         };
       }
       return { success: false, error: data.error_description || data.message || 'Falha ao cadastrar conta.' };
+    }
+
+    // Proteção contra duplicidade de conta quando o e-mail já existe (via Google ou senha anterior)
+    const identities = data?.identities ?? data?.user?.identities;
+    if (Array.isArray(identities) && identities.length === 0) {
+      return {
+        success: false,
+        error: 'Este e-mail já possui uma conta cadastrada. Por favor, clique em "Já tenho conta" para entrar com seu e-mail ou com o Google.'
+      };
     }
 
     return {
@@ -483,7 +1037,17 @@ export async function verifyEmailOtp(
 
       const data = await res.json();
       if (res.ok && data.access_token && data.user) {
-        const profile = await fetchAuthoritativeProfile(data.user.id, data.access_token);
+        const supabase = getSupabaseClient();
+        if (supabase && data.access_token && data.refresh_token) {
+          try {
+            await supabase.auth.setSession({
+              access_token: data.access_token,
+              refresh_token: data.refresh_token
+            });
+          } catch {}
+        }
+
+        const profile = await fetchAuthoritativeProfile(data.user.id, data.access_token, data.user);
 
         const userProfile: UserProfile = {
           id: data.user.id,
@@ -491,6 +1055,7 @@ export async function verifyEmailOtp(
           email: data.user.email,
           role: profile.appRole,
           cref: profile.cref,
+          avatar_url: profile.avatarUrl,
           created_at: data.user.created_at,
           subscription_status: profile.subscriptionStatus
         };
@@ -608,7 +1173,8 @@ export async function requestPasswordReset(email: string): Promise<{ success: bo
 }
 
 /**
- * Encerra a sessão no Supabase e limpa o armazenamento local
+ * Encerra a sessão no Supabase e limpa apenas a sessão de autenticação,
+ * preservando integralmente o histórico, progresso e planos locais do usuário.
  */
 export async function logoutUser(): Promise<void> {
   const status = getSupabaseConfigStatus();
@@ -626,6 +1192,13 @@ export async function logoutUser(): Promise<void> {
           'Authorization': `Bearer ${current.token}`
         }
       });
+    } catch {}
+  }
+
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
     } catch {}
   }
 

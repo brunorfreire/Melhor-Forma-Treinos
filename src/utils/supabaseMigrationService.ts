@@ -409,6 +409,8 @@ SET search_path = public, auth, pg_temp
 AS $$
 DECLARE
   v_initial_role public.app_user_role := 'student';
+  v_resolved_name TEXT;
+  v_resolved_avatar TEXT;
 BEGIN
   IF (new.raw_app_meta_data->>'app_role') = 'admin' THEN
     v_initial_role := 'admin';
@@ -418,25 +420,41 @@ BEGIN
     v_initial_role := 'student';
   END IF;
 
+  v_resolved_name := COALESCE(
+    NULLIF(TRIM(new.raw_user_meta_data->>'nome'), ''),
+    NULLIF(TRIM(new.raw_user_meta_data->>'full_name'), ''),
+    NULLIF(TRIM(new.raw_user_meta_data->>'name'), ''),
+    split_part(new.email, '@', 1)
+  );
+
+  v_resolved_avatar := COALESCE(
+    NULLIF(TRIM(new.raw_user_meta_data->>'avatar_url'), ''),
+    NULLIF(TRIM(new.raw_user_meta_data->>'picture'), '')
+  );
+
   INSERT INTO public.profiles (
     id,
     nome,
     email,
     app_role,
     subscription_status,
-    cref
+    cref,
+    avatar_url
   )
   VALUES (
     new.id,
-    COALESCE(NULLIF(TRIM(new.raw_user_meta_data->>'nome'), ''), split_part(new.email, '@', 1)),
+    v_resolved_name,
     new.email,
     v_initial_role,
     'free',
-    NULLIF(TRIM(new.raw_user_meta_data->>'cref'), '')
+    NULLIF(TRIM(new.raw_user_meta_data->>'cref'), ''),
+    v_resolved_avatar
   )
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
-    nome = COALESCE(NULLIF(TRIM(EXCLUDED.nome), ''), profiles.nome);
+    nome = COALESCE(NULLIF(TRIM(profiles.nome), ''), EXCLUDED.nome),
+    avatar_url = COALESCE(profiles.avatar_url, EXCLUDED.avatar_url),
+    updated_at = NOW();
   RETURN new;
 END;
 $$;

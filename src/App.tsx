@@ -57,6 +57,7 @@ export default function App() {
   const [currentRoute, setCurrentRoute] = useState<string>(getInitialRoute);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [authInitialError, setAuthInitialError] = useState<string>('');
 
   const [plan, setPlan] = useState<WorkoutPlan>(SAMPLE_WORKOUT_PLAN);
   const [viewMode, setViewMode] = useState<ViewMode>('home');
@@ -91,7 +92,7 @@ export default function App() {
     };
   }, []);
 
-  // 1. Verificação e Restauração Segura de Sessão no Supabase Auth
+  // 1. Verificação e Restauração Segura de Sessão no Supabase Auth + Retorno Google OAuth
   useEffect(() => {
     let isMounted = true;
 
@@ -102,8 +103,24 @@ export default function App() {
         if (isMounted) {
           if (result.valid && result.session) {
             setSession(result.session);
+            setAuthInitialError('');
+            const initialRoute = getInitialRoute();
+            if (result.isOAuthCallback || initialRoute === '/entrar' || initialRoute === '/cadastro') {
+              try {
+                window.history.replaceState(null, '', '/app');
+              } catch {}
+              setCurrentRoute('/app');
+            }
           } else {
             setSession(null);
+            if (result.oauthError) {
+              setAuthInitialError(result.oauthError);
+              const targetRoute = result.oauthOriginView === 'register' ? '/cadastro' : '/entrar';
+              try {
+                window.history.replaceState(null, '', targetRoute);
+              } catch {}
+              setCurrentRoute(targetRoute);
+            }
           }
         }
       } catch (err: any) {
@@ -273,12 +290,17 @@ export default function App() {
     return (
       <GlobalAuthGate
         initialView={initialView}
+        initialError={authInitialError}
         onAuthenticated={(newSession) => {
+          setAuthInitialError('');
           setSession(newSession);
           navigate('/app');
         }}
         onNavigate={navigate}
-        onBackToLanding={() => navigate('/')}
+        onBackToLanding={() => {
+          setAuthInitialError('');
+          navigate('/');
+        }}
       />
     );
   }
@@ -291,12 +313,17 @@ export default function App() {
     return (
       <GlobalAuthGate
         initialView="login"
+        initialError={authInitialError}
         onAuthenticated={(newSession) => {
+          setAuthInitialError('');
           setSession(newSession);
           navigate('/app');
         }}
         onNavigate={navigate}
-        onBackToLanding={() => navigate('/')}
+        onBackToLanding={() => {
+          setAuthInitialError('');
+          navigate('/');
+        }}
       />
     );
   }
