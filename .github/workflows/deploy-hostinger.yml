@@ -66,7 +66,15 @@ jobs:
             exit 1
           fi
 
+      - name: Aviso sobre a publicação
+        shell: bash
+        run: |
+          if [[ "${{ vars.HOSTINGER_AUTO_DEPLOY_ENABLED }}" != "true" ]]; then
+            echo "Build validado. FTP mantido desativado até verificar o publicador da Hostinger."
+          fi
+
       - name: Deploy via FTP na Hostinger
+        if: ${{ vars.HOSTINGER_AUTO_DEPLOY_ENABLED == 'true' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
