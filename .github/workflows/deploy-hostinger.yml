@@ -54,6 +54,18 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
+      - name: Verificar resultado do build antes de publicar
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        shell: bash
+        run: |
+          test -s dist/index.html || { echo "::error::Build sem dist/index.html"; exit 1; }
+          test -d dist/assets || { echo "::error::Build sem dist/assets"; exit 1; }
+          if ! grep -rlF --include='*.js' "$VITE_SUPABASE_URL" dist/assets >/dev/null; then
+            echo "::error::URL do Supabase não está incorporada aos arquivos JavaScript de produção."
+            exit 1
+          fi
+
       - name: Deploy via FTP na Hostinger
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
