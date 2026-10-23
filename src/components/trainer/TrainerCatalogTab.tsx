@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   CatalogWorkout, 
   WorkoutCollectionCategory, 
@@ -55,11 +55,13 @@ import {
 interface TrainerCatalogTabProps {
   onStartTestWorkout: (plan: WorkoutPlan) => void;
   onPreviewExerciseVideo: (ex: any) => void;
+  initialWorkoutId?: string;
 }
 
 export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
   onStartTestWorkout,
-  onPreviewExerciseVideo
+  onPreviewExerciseVideo,
+  initialWorkoutId
 }) => {
   const [workouts, setWorkouts] = useState<CatalogWorkout[]>(() => getAllCatalogWorkouts());
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
@@ -137,6 +139,13 @@ export const TrainerCatalogTab: React.FC<TrainerCatalogTabProps> = ({
       .sort((a, b) => a.order - b.order);
     setWorkoutRelations(relations);
   };
+
+  // Abre imediatamente o treino escolhido na Central de Curadoria.
+  useEffect(() => {
+    if (!initialWorkoutId) return;
+    const target = getAllCatalogWorkouts().find(workout => workout.id === initialWorkoutId);
+    if (target) handleOpenEditModal(target);
+  }, [initialWorkoutId]);
 
   // Salvar alterações da sessão
   const handleSaveWorkoutEdits = (e: React.FormEvent) => {

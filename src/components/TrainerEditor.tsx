@@ -42,6 +42,7 @@ import { MelhorFormaLogo } from './MelhorFormaLogo';
 import { resolveExerciseMedia } from '../utils/exerciseMedia';
 import { TrainerAuthGate, isTrainerAuthenticated, logoutTrainer } from './trainer/TrainerAuthGate';
 import { TrainerCatalogTab } from './trainer/TrainerCatalogTab';
+import { TrainerCurationTab } from './trainer/TrainerCurationTab';
 import { TrainerExercisesTab } from './trainer/TrainerExercisesTab';
 import { TrainerVideoValidatorTab } from './trainer/TrainerVideoValidatorTab';
 import { TrainerMuscleWikiTab } from './trainer/TrainerMuscleWikiTab';
@@ -63,6 +64,7 @@ interface TrainerEditorProps {
   onPreviewExercise: (ex: Exercise) => void;
   onOpenStudentHistory: () => void;
   onBackToCatalog?: () => void;
+  isAdmin: boolean;
 }
 
 export const TrainerEditor: React.FC<TrainerEditorProps> = ({
@@ -73,10 +75,13 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
   onOpenHostingerGuide,
   onPreviewExercise,
   onOpenStudentHistory,
-  onBackToCatalog
+  onBackToCatalog,
+  isAdmin
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => isTrainerAuthenticated());
-  const [activeAdminTab, setActiveAdminTab] = useState<'catalog' | 'exercises' | 'audit' | 'video_validator' | 'musclewiki' | 'student_sheet'>('catalog');
+  const [activeAdminTab, setActiveAdminTab] = useState<'curation' | 'catalog' | 'exercises' | 'audit' | 'video_validator' | 'musclewiki' | 'student_sheet'>(isAdmin ? 'curation' : 'catalog');
+  const [targetExerciseId, setTargetExerciseId] = useState<string | undefined>();
+  const [targetWorkoutId, setTargetWorkoutId] = useState<string | undefined>();
   const [activeSessionIndex, setActiveSessionIndex] = useState(0);
   const [savedCount, setSavedCount] = useState(() => getSavedStudents().length);
   const [justSavedNotice, setJustSavedNotice] = useState(false);
@@ -457,6 +462,16 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
       {/* Admin Tab Navigation Bar */}
       <div className="py-2.5 sticky top-[57px] z-20 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          {isAdmin && (
+            <button
+              onClick={() => setActiveAdminTab('curation')}
+              className={'min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap ' +
+                (activeAdminTab === 'curation' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-emerald-300 border border-emerald-800')}
+            >
+              Curadoria de Movimentos
+            </button>
+          )}
+
           <button
             onClick={() => setActiveAdminTab('catalog')}
             className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -533,8 +548,16 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
 
       {/* Tab Contents */}
       <div className="pt-4">
+        {isAdmin && activeAdminTab === 'curation' && (
+          <TrainerCurationTab
+            onEditExercise={(id) => { setTargetExerciseId(id); setActiveAdminTab('exercises'); }}
+            onEditWorkout={(id) => { setTargetWorkoutId(id); setActiveAdminTab('catalog'); }}
+          />
+        )}
+
         {activeAdminTab === 'catalog' && (
           <TrainerCatalogTab
+            initialWorkoutId={targetWorkoutId}
             onStartTestWorkout={(testPlan) => {
               onChangePlan(testPlan);
               onViewAsStudent();
@@ -545,6 +568,7 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
 
         {activeAdminTab === 'exercises' && (
           <TrainerExercisesTab
+            initialExerciseId={targetExerciseId}
             initialSubSection="library"
             onPreviewExerciseVideo={onPreviewExercise}
           />
