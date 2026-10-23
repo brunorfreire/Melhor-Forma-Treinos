@@ -22,7 +22,7 @@ const MAX_NOTES = 3000;
 
 // Sugestões editoriais, não equivalências biomecânicas automáticas.
 // A mudança de um padrão de movimento exige avaliação profissional.
-const FREE_WEIGHT_ALTERNATIVES: Record<string, { ids: string[]; notes: string }> = {
+const EDITORIAL_SUGGESTIONS: Record<string, { ids: string[]; notes: string }> = {
   'ex-leg-press-45': {
     ids: ['ex-agachamento-goblet', 'ex-sentar-levantar-banco', 'ex-afundo-estatico'],
     notes: 'Avaliar capacidade de agachar, equilíbrio, amplitude e progressão de carga.'
@@ -58,6 +58,14 @@ const FREE_WEIGHT_ALTERNATIVES: Record<string, { ids: string[]; notes: string }>
   'ex-triceps-corda-polia': {
     ids: ['ex-triceps-frances-halter'],
     notes: 'A posição do ombro é diferente. Conferir tolerância, técnica e opção de extensão de cotovelo com elástico.'
+  },
+  'ex-triceps-banco-mergulho': {
+    ids: ['ex-triceps-frances-halter', 'ex-flexao-braco-inclinada'],
+    notes: 'Reavaliar a tolerância do ombro no mergulho em banco. Alternativas mudam o padrão e devem ser prescritas conforme objetivo.'
+  },
+  'ex-agachamento-livre': {
+    ids: ['ex-sentar-levantar-banco', 'ex-agachamento-goblet'],
+    notes: 'Revisar a orientação de descer até coxas paralelas: preferir amplitude individualmente tolerada, controle e progressão gradual.'
   }
 };
 
@@ -197,7 +205,7 @@ export const TrainerCurationTab: React.FC<Props> = ({ onEditExercise, onEditWork
     URL.revokeObjectURL(url);
   };
 
-  const suggestions = selectedExercise ? FREE_WEIGHT_ALTERNATIVES[selectedExercise.id] : undefined;
+  const suggestions = selectedExercise ? EDITORIAL_SUGGESTIONS[selectedExercise.id] : undefined;
   const selectedRelations = selectedWorkout
     ? relations.filter(r => r.workoutId === selectedWorkout.id).sort((a, b) => a.order - b.order)
     : [];
@@ -251,7 +259,7 @@ export const TrainerCurationTab: React.FC<Props> = ({ onEditExercise, onEditWork
             className="mt-1 w-full min-h-[44px] rounded-xl bg-slate-900 border border-slate-700 px-3 text-white">
             <option value="todos">Todos</option>
             <option value="pendentes">Sem decisão editorial</option>
-            <option value="maquinas">Máquinas e polias identificadas</option>
+            <option value="maquinas">Máquinas/polias nas relações locais</option>
             <option value="ajustar">Marcados para ajustar</option>
             <option value="rejeitados">Marcados para rejeitar</option>
           </select>
