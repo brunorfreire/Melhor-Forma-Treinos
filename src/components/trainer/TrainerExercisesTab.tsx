@@ -49,6 +49,7 @@ import { TrainerLibraryAuditTab } from './TrainerLibraryAuditTab';
 interface TrainerExercisesTabProps {
   onPreviewExerciseVideo: (ex: Exercise) => void;
   initialSubSection?: 'library' | 'audit';
+  initialExerciseId?: string;
 }
 
 // 13 arquivos pré-instalados fisicamente na pasta public/exercises/
@@ -92,7 +93,8 @@ const LOCAL_PRESET_MEDIA = [
 
 export const TrainerExercisesTab: React.FC<TrainerExercisesTabProps> = ({
   onPreviewExerciseVideo,
-  initialSubSection = 'library'
+  initialSubSection = 'library',
+  initialExerciseId
 }) => {
   const [activeSubSection, setActiveSubSection] = useState<'library' | 'audit'>(initialSubSection);
 
@@ -276,6 +278,13 @@ export const TrainerExercisesTab: React.FC<TrainerExercisesTabProps> = ({
     setEditingExercise({ ...ex });
     setMediaTab(initialTab);
   };
+
+  // Abre diretamente a ficha escolhida na Central de Curadoria, sem recriar dados.
+  useEffect(() => {
+    if (!initialExerciseId) return;
+    const target = getAllCentralExercises().find(ex => ex.id === initialExerciseId);
+    if (target) handleOpenEditModal(target);
+  }, [initialExerciseId]);
 
   // Salvar exercício central
   const handleSaveExercise = (e: React.FormEvent) => {
