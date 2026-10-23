@@ -549,6 +549,7 @@ export default function App() {
           <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Carregando painel do treinador...</div>}>
             <TrainerEditor
               plan={plan}
+              isAdmin={user.role === 'admin'}
               onChangePlan={handleUpdatePlan}
               onViewAsStudent={() => setViewMode('student')}
               onOpenShareModal={() => setIsShareModalOpen(true)}
