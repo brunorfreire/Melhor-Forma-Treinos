@@ -139,7 +139,7 @@ export const TrainerCurationTab: React.FC<Props> = ({ onEditExercise, onEditWork
     if (filter === 'rejeitados' && record?.decision !== 'rejeitado') return false;
     if (search.trim()) {
       const parts = kind === 'exercise'
-        ? [item.id, item.name, (item as CentralExercise).equipment, (item as CentralExercise).movementPattern]
+        ? [item.id, (item as CentralExercise).name, (item as CentralExercise).equipment, (item as CentralExercise).movementPattern]
         : [item.id, (item as CatalogWorkout).title, (item as CatalogWorkout).objective];
       if (!normalize(parts.filter(Boolean).join(' ')).includes(normalize(search.trim()))) return false;
     }
@@ -265,7 +265,7 @@ export const TrainerCurationTab: React.FC<Props> = ({ onEditExercise, onEditWork
             const key = kind + ':' + item.id;
             const record = records[key];
             const machine = kind === 'exercise' && isMachineOrCable(item as CentralExercise);
-            const label = kind === 'exercise' ? item.name : (item as CatalogWorkout).title;
+            const label = kind === 'exercise' ? (item as CentralExercise).name : (item as CatalogWorkout).title;
             return <button type="button" key={item.id} onClick={() => selectItem(item)}
               className={'w-full text-left border rounded-xl p-3 min-h-[70px] space-y-1 transition ' +
                 (selectedId === item.id ? 'bg-emerald-950/40 border-emerald-500' : 'bg-slate-900 border-slate-800 hover:border-slate-500')}>
