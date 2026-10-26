@@ -23,6 +23,7 @@ import {
   X
 } from 'lucide-react';
 import { MelhorFormaLogo } from '../MelhorFormaLogo';
+import { PWAInstallBanner } from '../PWAInstallBanner';
 import { CATALOG_COLLECTIONS } from '../../data/catalogWorkouts';
 import { getAllCatalogWorkouts } from '../../data/workoutCatalogService';
 import { HeroFitnessMosaic } from './HeroFitnessMosaic';
@@ -79,7 +80,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ========================================================================= */}
       {/* 1. HEADER ESCURO E MINIMALISTA (ESTILO STREAMING) */}
       {/* ========================================================================= */}
-      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-900/90 px-4 sm:px-8 py-3.5 transition">
+      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-900/90 px-4 sm:px-8 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3.5 transition">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Brand Logo */}
           <div 
@@ -138,6 +139,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
       </header>
+
+      {/* Faixa Exclusiva de Instalação Mobile (PWAInstallBanner) */}
+      <PWAInstallBanner />
 
       {/* ========================================================================= */}
       {/* 2. HERO CINEMATOGRÁFICO INSPIRADO NA NETFLIX */}

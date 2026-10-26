@@ -337,9 +337,9 @@ export default function App() {
       {/* ========================================================================= */}
       {/* GLOBAL STREAMING NAVIGATION BAR (Melhor Forma Play) */}
       {/* ========================================================================= */}
-      <nav className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/90 px-3 sm:px-6 py-2 transition shadow-lg shadow-black/40">
+      <nav className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/90 px-3 sm:px-6 pt-[max(0.5rem,env(safe-area-inset-top,0.5rem))] pb-2 transition shadow-lg shadow-black/40">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          {/* Top Row on Mobile: Brand Logo, User Status & PWA Install Button */}
+          {/* Top Row on Mobile: Brand Logo & User Status (Clean, no cramped install button) */}
           <div className="flex items-center justify-between w-full sm:w-auto gap-2">
             <div 
               onClick={() => { setViewMode('home'); navigate('/app'); }}
@@ -366,11 +366,11 @@ export default function App() {
             </div>
 
             {/* User Pill & Action on Right of Brand */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {/* Badge de Identificação do Aluno/Admin */}
               <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2 sm:px-2.5 py-1 rounded-xl text-xs">
                 <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="font-bold text-white text-[11px] truncate max-w-[85px] sm:max-w-[120px]">
+                <span className="font-bold text-white text-[11px] truncate max-w-[55px] min-[360px]:max-w-[75px] min-[390px]:max-w-[95px] sm:max-w-[120px]">
                   {user.nome.split(' ')[0]}
                 </span>
                 {user.role === 'admin' ? (
@@ -387,22 +387,25 @@ export default function App() {
                   </span>
                 ) : (
                   <span className="text-[9px] font-mono font-bold bg-emerald-500/25 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/35">
-                    Aluno Free
+                    <span className="hidden sm:inline">Aluno </span>Free
                   </span>
                 )}
               </div>
 
-              {/* Botão Sair (Logout) */}
+              {/* Botão Sair (Logout) com touch target 44px no mobile */}
               <button
                 onClick={handleLogout}
-                className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-900 border border-transparent hover:border-rose-500/30 transition flex items-center justify-center cursor-pointer"
+                className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-900 border border-transparent hover:border-rose-500/30 transition flex items-center justify-center cursor-pointer active:scale-95"
                 title="Sair da conta"
                 aria-label="Sair da conta"
               >
                 <LogOut className="w-4 h-4" />
               </button>
 
-              <PWAInstallButton variant="header" />
+              {/* Botão de instalação somente visível em telas maiores no header (no mobile fica no banner dedicado) */}
+              <div className="hidden md:flex items-center shrink-0">
+                <PWAInstallButton variant="header" />
+              </div>
             </div>
           </div>
 
