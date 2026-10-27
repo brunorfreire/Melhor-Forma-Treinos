@@ -459,6 +459,17 @@ async function fetchActiveGlobalPremiumEntitlement(userId: string, token: string
       (row.valid_until == null || (Number.isFinite(Date.parse(row.valid_until)) && Date.parse(row.valid_until) > now))
     );
     if (!eligible.length) return { active: false, validUntil: null };
+    // A regra do banco considera também cancelamentos/reembolsos recentes.
+    const authorization = await fetch(
+      `${getSupabaseUrl()}/rest/v1/rpc/current_user_has_premium_access`,
+      { method: 'POST', headers: {
+        apikey: getSupabaseAnonKey(), Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }, body: '{}' }
+    );
+    if (!authorization.ok || (await authorization.json()) !== true) {
+      return { active: false, validUntil: null };
+    }
     return {
       active: true,
       validUntil: eligible.some((row: any) => row.valid_until == null)
