@@ -438,6 +438,39 @@ export async function signInWithGoogle(
 }
 
 /**
+ * Confere direitos globais com JWT do usuário e RLS. Em falhas de rede,
+ * não concede permissões por suposição.
+ */
+async function fetchActiveGlobalPremiumEntitlement(userId: string, token: string): Promise<{
+  active: boolean; validUntil: string | null;
+}> {
+  try {
+    const response = await fetch(
+      `${getSupabaseUrl()}/rest/v1/user_entitlements?user_id=eq.${encodeURIComponent(userId)}&status=eq.active&select=entitlement_type,resource_id,valid_until`,
+      { headers: { apikey: getSupabaseAnonKey(), Authorization: `Bearer ${token}` }, cache: 'no-store' }
+    );
+    if (!response.ok) return { active: false, validUntil: null };
+    const rows: unknown = await response.json();
+    if (!Array.isArray(rows)) return { active: false, validUntil: null };
+    const now = Date.now();
+    const eligible = rows.filter((row: any) =>
+      row && (row.resource_id === '*' ||
+        (row.resource_id == null && ['subscription', 'lifetime', 'trainer_granted'].includes(row.entitlement_type))) &&
+      (row.valid_until == null || (Number.isFinite(Date.parse(row.valid_until)) && Date.parse(row.valid_until) > now))
+    );
+    if (!eligible.length) return { active: false, validUntil: null };
+    return {
+      active: true,
+      validUntil: eligible.some((row: any) => row.valid_until == null)
+        ? null
+        : eligible.map((row: any) => row.valid_until as string).sort((a: string, b: string) => Date.parse(b) - Date.parse(a))[0]
+    };
+  } catch {
+    return { active: false, validUntil: null };
+  }
+}
+
+/**
  * Consulta de forma autoritativa os dados de perfil na tabela public.profiles.
  * - NUNCA confia em app_role ou subscription_status vindos do cliente/navegador.
  * - NUNCA sobrescreve privilégios administrativos (admin/trainer) ou assinaturas existentes.
@@ -455,6 +488,8 @@ async function fetchAuthoritativeProfile(
 ): Promise<{
   appRole: UserRole;
   subscriptionStatus: SubscriptionStatus;
+  hasActivePremiumEntitlement: boolean;
+  premiumEntitlementUntil: string | null;
   nome?: string;
   cref?: string;
   avatarUrl?: string;
@@ -528,9 +563,12 @@ async function fetchAuthoritativeProfile(
           }
         }
 
+        const premiumEntitlement = await fetchActiveGlobalPremiumEntitlement(userId, token);
         return {
           appRole,
           subscriptionStatus,
+          hasActivePremiumEntitlement: premiumEntitlement.active,
+          premiumEntitlementUntil: premiumEntitlement.validUntil,
           nome: currentNome || verifiedGoogleName || undefined,
           cref: item.cref || undefined,
           avatarUrl: currentAvatar || verifiedGoogleAvatar || undefined
@@ -564,6 +602,8 @@ async function fetchAuthoritativeProfile(
         return {
           appRole: 'student',
           subscriptionStatus: 'free',
+          hasActivePremiumEntitlement: false,
+          premiumEntitlementUntil: null,
           nome: initialName,
           avatarUrl: verifiedGoogleAvatar || undefined
         };
@@ -576,6 +616,8 @@ async function fetchAuthoritativeProfile(
   return {
     appRole: 'student',
     subscriptionStatus: 'free',
+    hasActivePremiumEntitlement: false,
+    premiumEntitlementUntil: null,
     nome: verifiedGoogleName || undefined,
     avatarUrl: verifiedGoogleAvatar || undefined
   };
@@ -762,7 +804,9 @@ export async function validateCurrentSession(): Promise<{
       cref: profile.cref,
       avatar_url: profile.avatarUrl || userData.user_metadata?.avatar_url || userData.user_metadata?.picture,
       created_at: userData.created_at,
-      subscription_status: profile.subscriptionStatus
+      subscription_status: profile.subscriptionStatus,
+      has_active_premium_entitlement: profile.hasActivePremiumEntitlement,
+      premium_entitlement_until: profile.premiumEntitlementUntil
     };
 
     const refreshedSession: AuthSession = {
@@ -880,7 +924,9 @@ export async function loginUser(
       cref: profile.cref,
       avatar_url: profile.avatarUrl || data.user.user_metadata?.avatar_url,
       created_at: data.user.created_at,
-      subscription_status: profile.subscriptionStatus
+      subscription_status: profile.subscriptionStatus,
+      has_active_premium_entitlement: profile.hasActivePremiumEntitlement,
+      premium_entitlement_until: profile.premiumEntitlementUntil
     };
 
     const session: AuthSession = {
@@ -1057,7 +1103,9 @@ export async function verifyEmailOtp(
           cref: profile.cref,
           avatar_url: profile.avatarUrl,
           created_at: data.user.created_at,
-          subscription_status: profile.subscriptionStatus
+          subscription_status: profile.subscriptionStatus,
+      has_active_premium_entitlement: profile.hasActivePremiumEntitlement,
+      premium_entitlement_until: profile.premiumEntitlementUntil
         };
 
         const session: AuthSession = {
