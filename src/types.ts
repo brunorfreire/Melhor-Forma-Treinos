@@ -189,6 +189,9 @@ export interface UserProfile {
   cref?: string;
   created_at: string;
   subscription_status?: SubscriptionStatus;
+  /** Direito Premium global concedido/assinado e verificado em user_entitlements. */
+  premium_entitlement_until?: string | null;
+  has_active_premium_entitlement?: boolean;
 }
 
 export interface Product {

@@ -58,6 +58,13 @@ export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authInitialError, setAuthInitialError] = useState<string>('');
+  // Atualiza a indicação visual quando uma cortesia com prazo chega ao fim.
+  const [permissionNow, setPermissionNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = window.setInterval(() => setPermissionNow(Date.now()), 60000);
+    return () => window.clearInterval(interval);
+  }, []);
+
 
   const [plan, setPlan] = useState<WorkoutPlan>(SAMPLE_WORKOUT_PLAN);
   const [viewMode, setViewMode] = useState<ViewMode>('home');
@@ -330,7 +337,14 @@ export default function App() {
 
   const user = session.user;
   const isPrivileged = user.role === 'trainer' || user.role === 'admin';
-  const isPremium = user.subscription_status === 'active' || isPrivileged;
+  const isPremium =
+    isPrivileged ||
+    user.subscription_status === 'active' ||
+    user.subscription_status === 'trialing' ||
+    (user.has_active_premium_entitlement === true &&
+      (user.premium_entitlement_until == null ||
+        (Number.isFinite(Date.parse(user.premium_entitlement_until)) &&
+          Date.parse(user.premium_entitlement_until) > permissionNow)));
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-start">
