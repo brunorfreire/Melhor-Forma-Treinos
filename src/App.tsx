@@ -9,7 +9,6 @@ const TrainerEditor = React.lazy(() => import('./components/TrainerEditor').then
 import { ShareModal } from './components/ShareModal';
 import { HostingerGuideModal } from './components/HostingerGuideModal';
 import { MuscleWikiModal } from './components/MuscleWikiModal';
-import { RestTimer } from './components/RestTimer';
 import { StudentHistoryModal } from './components/StudentHistoryModal';
 import { saveStudentWorkout } from './utils/studentStorage';
 import { PWAInstallButton } from './components/PWAInstallButton';
@@ -535,7 +534,6 @@ export default function App() {
             onOpenTodayRecommender={() => setIsTodayModalOpen(true)}
             onOpenEvolution={() => setViewMode('evolution')}
           />
-          <RestTimer />
         </>
       )}
 
