@@ -23,5 +23,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Verificar TypeScript
         run: npm run lint
+      - name: Testar sequências e descansos dos métodos de treino
+        run: npx tsx --test tests/workoutExecutionPlan.test.ts
       - name: Compilar Vite
         run: npm run build
