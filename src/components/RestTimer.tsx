@@ -72,7 +72,7 @@ export const RestTimer: React.FC = () => {
         {/* Top Header Bar */}
         <div 
           onClick={() => setIsMinimized(!isMinimized)}
-          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIsMinimized(value => !value); } }}
+          onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setIsMinimized(value => !value); } }}
           role="button"
           tabIndex={0}
           aria-expanded={!isMinimized}
