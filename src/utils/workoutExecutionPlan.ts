@@ -30,9 +30,16 @@ export const getSets = (exercise: Exercise): number => {
 
 export const getRestSeconds = (rest: string): number => {
   const source = (rest || '').trim();
+  const colon = source.match(/^(\d{1,2}):(\d{2})$/);
+  if (colon) return Math.min(600, Number(colon[1]) * 60 + Number(colon[2]));
+  const minutes = source.match(/(\d+(?:[,.]\d+)?)\s*(?:min|minuto)/i);
+  const secondsSuffix = source.match(/(\d+)\s*(?:s|seg)/i);
+  if (minutes) {
+    const total = Number(minutes[1].replace(',', '.')) * 60 + Number(secondsSuffix?.[1] || 0);
+    return Math.min(600, Math.max(0, Math.round(total)));
+  }
   const count = Number(source.match(/\d+(?:[,.]\d+)?/)?.[0]?.replace(',', '.') || '60');
-  const seconds = /\b(min|minuto|minutes?)\b/i.test(source) ? count * 60 : count;
-  return Math.min(600, Math.max(0, Math.round(seconds)));
+  return Math.min(600, Math.max(0, Math.round(count)));
 };
 
 const within = (v: number, min: number, max: number) =>
@@ -53,7 +60,7 @@ export function validateExecutionGroups(session: WorkoutSession): {
     const title = group?.id || 'Grupo sem identificação';
     const ids = group?.exerciseIds;
     if (!group || !['combinado', 'conjugado', 'circuitado'].includes(group.kind) ||
-        !Array.isArray(ids) || ids.length < 2 ||
+        !Array.isArray(ids) || ids.length < (group.kind === 'circuitado' ? 3 : 2) ||
         new Set(ids).size !== ids.length ||
         ids.some(id => !byId.has(id) || used.has(id)) ||
         !within(group.rounds, 1, 20) ||
