@@ -23,8 +23,8 @@ export const WorkoutGroupingEditor: React.FC<Props> = ({ session, onChange }) =>
 
   const addGroup = () => {
     const current = exercises.slice(startIndex, endIndex + 1);
-    if (current.length < 2) {
-      setFeedback('Selecione pelo menos dois exercícios em sequência.');
+    if (current.length < (kind === 'circuitado' ? 3 : 2)) {
+      setFeedback(kind === 'circuitado' ? 'Para o circuito, selecione pelo menos três exercícios em sequência.' : 'Selecione pelo menos dois exercícios em sequência.');
       return;
     }
     if (current.some(ex => groups.some(group => group.exerciseIds.includes(ex.id)))) {
@@ -57,8 +57,9 @@ export const WorkoutGroupingEditor: React.FC<Props> = ({ session, onChange }) =>
       <div className="space-y-1">
         <h3 className="text-sm font-bold text-white">Métodos de Execução Guiada</h3>
         <p className="text-[11px] text-slate-300 leading-relaxed">
-          Deixe sem blocos para usar séries simples. Combine exercícios consecutivos para
-          alterná-los em rodadas. Não altera automaticamente séries, cargas, exercícios ou vídeos.
+          Deixe sem blocos para usar séries simples. Combinado: grupamentos diferentes;
+          conjugado: mesmo grupamento; circuitado: três ou mais exercícios em rodadas.
+          O treinador define a ordem, sem alterar automaticamente séries, cargas ou vídeos.
         </p>
       </div>
 
