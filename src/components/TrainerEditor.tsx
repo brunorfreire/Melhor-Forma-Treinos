@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { WorkoutPlan, WorkoutSession, Exercise } from '../types';
 import { MUSCLEWIKI_CATALOG, MUSCLE_GROUPS, CatalogExercise } from '../data/muscleWikiExercises';
+import { WorkoutGroupingEditor } from './trainer/WorkoutGroupingEditor';
 import { PRESET_TEMPLATES } from '../data/defaultPlans';
 import { resolveExerciseYouTubeId } from '../utils/youtube';
 import { getSavedStudents, saveStudentWorkout } from '../utils/studentStorage';
@@ -779,6 +780,12 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
                   className="w-full bg-slate-950/60 border border-slate-800/60 rounded-xl px-3 py-1 text-xs text-slate-300 focus:outline-none"
                 />
               </div>
+
+              {/* Métodos de execução configurados explicitamente pelo treinador. */}
+              <WorkoutGroupingEditor
+                session={activeSession}
+                onChange={updateActiveSession}
+              />
 
               {/* Exercise Library Search & Add Bar */}
               <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 space-y-3 shadow-sm">

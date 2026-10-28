@@ -7,7 +7,7 @@ export const RestTimer: React.FC = () => {
   const [remainingSeconds, setRemainingSeconds] = useState(60);
   const [isActive, setIsActive] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -72,6 +72,11 @@ export const RestTimer: React.FC = () => {
         {/* Top Header Bar */}
         <div 
           onClick={() => setIsMinimized(!isMinimized)}
+          onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setIsMinimized(value => !value); } }}
+          role="button"
+          tabIndex={0}
+          aria-expanded={!isMinimized}
+          aria-label="Abrir ou recolher o cronômetro de descanso"
           className="px-3.5 py-2.5 bg-slate-950/80 border-b border-slate-800/80 flex items-center justify-between cursor-pointer select-none"
         >
           <div className="flex items-center gap-2">
@@ -79,6 +84,7 @@ export const RestTimer: React.FC = () => {
             <span className="text-xs font-semibold text-slate-200">
               Cronômetro de Descanso
             </span>
+            {isMinimized && !isActive && <span className="hidden min-[360px]:inline text-[10px] text-emerald-300">Toque para abrir</span>}
             {isActive && (
               <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded-full">
                 {formatTime(remainingSeconds)}
@@ -105,33 +111,8 @@ export const RestTimer: React.FC = () => {
           </div>
         </div>
 
-        {/* Minimized Quick Bar */}
-        {isMinimized ? (
-          <div className="p-2.5 flex items-center justify-between">
-            <span className="text-xl font-mono font-black text-white pl-2">
-              {formatTime(remainingSeconds)}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleTogglePlay}
-                className={`min-h-[44px] min-w-[44px] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md ${
-                  isActive ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                }`}
-              >
-                {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
-                <span>{isActive ? 'Pausar' : 'Iniciar'}</span>
-              </button>
-              <button
-                onClick={handleReset}
-                className="min-h-[44px] min-w-[44px] p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl flex items-center justify-center transition active:scale-95"
-                title="Reiniciar cronômetro"
-                aria-label="Reiniciar cronômetro"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ) : (
+        {/* Recolhido: mostra só a barra compacta e permite abrir sob demanda. */}
+        {isMinimized ? null : (
           /* Full Expanded Timer Controls */
           <div className="p-3.5 space-y-3">
             {/* Display and Main Action */}

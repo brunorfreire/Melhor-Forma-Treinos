@@ -27,11 +27,28 @@ export interface Exercise {
   mediaType?: 'image' | 'video' | 'youtube' | 'vimeo' | 'none';
 }
 
+export type WorkoutExecutionGroupKind = 'combinado' | 'conjugado' | 'circuitado';
+
+export interface WorkoutExecutionGroup {
+  id: string;
+  kind: WorkoutExecutionGroupKind;
+  /** IDs reais da ficha, em sequência contígua e sem reutilização por outro grupo. */
+  exerciseIds: string[];
+  /** Quantidade de rodadas e séries por exercício integrante. */
+  rounds: number;
+  /** Tempo entre exercícios da mesma rodada, inclusive zero. */
+  restBetweenExercisesSeconds: number;
+  /** Tempo após a rodada, antes de começar a próxima. */
+  restBetweenRoundsSeconds: number;
+}
+
 export interface WorkoutSession {
   id: string;
   name: string;
   focus: string;
   exercises: Exercise[];
+  /** Opcional: fichas antigas permanecem em execução simples. */
+  executionGroups?: WorkoutExecutionGroup[];
 }
 
 export interface WorkoutPlan {
