@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { buildExecutionSteps, validateExecutionGroups } from '../src/utils/workoutExecutionPlan';
+import { buildExecutionSteps, getRestSeconds, validateExecutionGroups } from '../src/utils/workoutExecutionPlan';
 import type { Exercise, WorkoutExecutionGroup, WorkoutSession } from '../src/types';
 
 const exercise = (id: string, muscleGroup: string, sets = '3'): Exercise => ({
@@ -69,4 +69,18 @@ test('IDs não contíguos e exercícios em dois grupos são rejeitados sem apaga
   const plan=make([exercise('A','Perna','2'),exercise('B','Costas','2'),exercise('C','Peito','2')],[g1,g2]);
   assert.equal(validateExecutionGroups(plan).warnings.length,1);
   assert.deepEqual(buildExecutionSteps(plan).steps.map(x=>x.exerciseId), ['A','A','B','C','B','C']);
+});
+
+test('dois movimentos não são classificados automaticamente como circuito', () => {
+  const plan=make([exercise('A','Costas','2'),exercise('B','Perna','2')],
+    [group('circuitado',['A','B'],2,30,60)]);
+  const result=buildExecutionSteps(plan);
+  assert.equal(result.warnings.length,1);
+  assert.deepEqual(result.steps.map(x=>x.exerciseId),['A','A','B','B']);
+});
+
+test('tempos 1:30, 1min30s e 90s não são confundidos com 1 segundo', () => {
+  assert.equal(getRestSeconds('1:30'),90);
+  assert.equal(getRestSeconds('1min30s'),90);
+  assert.equal(getRestSeconds('90s'),90);
 });
