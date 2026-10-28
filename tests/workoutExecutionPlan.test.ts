@@ -64,7 +64,7 @@ test('bloco com séries diferentes não altera a prescrição, regride para modo
 });
 
 test('IDs não contíguos e exercícios em dois grupos são rejeitados sem apagar treinos', () => {
-  const g1=group('circuitado',['A','C'],2,0,60);
+  const g1=group('combinado',['A','C'],2,0,60);
   const g2={...g1,id:'g2',exerciseIds:['B','C']};
   const plan=make([exercise('A','Perna','2'),exercise('B','Costas','2'),exercise('C','Peito','2')],[g1,g2]);
   assert.equal(validateExecutionGroups(plan).warnings.length,1);
@@ -83,4 +83,13 @@ test('tempos 1:30, 1min30s e 90s não são confundidos com 1 segundo', () => {
   assert.equal(getRestSeconds('1:30'),90);
   assert.equal(getRestSeconds('1min30s'),90);
   assert.equal(getRestSeconds('90s'),90);
+});
+
+test('um exercício não pode ser reutilizado em dois blocos sobrepostos', () => {
+  const g1=group('conjugado',['A','B'],2,0,60);
+  const g2={...g1,id:'g2',exerciseIds:['B','C']};
+  const plan=make([exercise('A','Peito','2'),exercise('B','Peito','2'),exercise('C','Peito','2')],[g1,g2]);
+  const result=buildExecutionSteps(plan);
+  assert.equal(result.warnings.length,1);
+  assert.deepEqual(result.steps.map(x=>x.exerciseId),['A','B','A','B','C','C']);
 });
