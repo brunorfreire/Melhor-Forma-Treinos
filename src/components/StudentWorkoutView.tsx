@@ -27,6 +27,8 @@ import {
   recordCompletedWorkout 
 } from '../utils/studentProgressService';
 import { ExerciseThumbnail } from './ExerciseThumbnail';
+import { GuidedWorkoutPlayer } from './GuidedWorkoutPlayer';
+import { RestTimer } from './RestTimer';
 
 interface StudentWorkoutViewProps {
   plan: WorkoutPlan;
@@ -48,6 +50,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   onOpenEvolution
 }) => {
   const [activeSessionIndex, setActiveSessionIndex] = useState(0);
+  const [executionMode, setExecutionMode] = useState<'guided' | 'overview'>('guided');
   // Track completed exercise IDs per session (local state in browser session)
   const [completedExerciseIds, setCompletedExerciseIds] = useState<Record<string, boolean>>({});
   const [showFinishedModal, setShowFinishedModal] = useState(false);
@@ -98,7 +101,8 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   const isSessionFinished = totalExercises > 0 && completedCount === totalExercises;
 
   const handleCompleteWorkout = (notifyWhatsApp: boolean = false) => {
-    if (isCompleting) return;
+    if (isCompleting || showFinishedModal) return;
+    if (!isSessionFinished && !window.confirm('Nem todos os exercícios foram marcados como concluídos. Deseja registrar este treino mesmo assim?')) return;
     setIsCompleting(true);
 
     // Extrai grupos musculares únicos trabalhados
@@ -136,7 +140,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-slate-950 text-slate-100 flex flex-col pb-44">
+    <div className={"w-full max-w-md mx-auto min-h-screen bg-slate-950 text-slate-100 flex flex-col " + (executionMode === "overview" ? "pb-44" : "pb-10")}>
       {/* Student App Bar */}
       <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-4 py-2.5 flex items-center justify-between gap-1.5">
         <div className="flex items-center gap-2 min-w-0">
@@ -208,6 +212,42 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
 
       {/* Main Student Container */}
       <div className="p-3 sm:p-4 space-y-4 flex-1">
+        <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-900 border border-slate-800 p-1" role="group" aria-label="Modo de treinamento">
+          <button
+            type="button"
+            onClick={() => setExecutionMode('guided')}
+            aria-pressed={executionMode === 'guided'}
+            className={'min-h-[44px] rounded-lg text-xs font-bold ' + (executionMode === 'guided' ? 'bg-emerald-600 text-white' : 'text-slate-300')}
+          >
+            Execução guiada
+          </button>
+          <button
+            type="button"
+            onClick={() => setExecutionMode('overview')}
+            aria-pressed={executionMode === 'overview'}
+            className={'min-h-[44px] rounded-lg text-xs font-bold ' + (executionMode === 'overview' ? 'bg-emerald-600 text-white' : 'text-slate-300')}
+          >
+            Visão geral
+          </button>
+        </div>
+
+        {/* Mantém o player montado ao abrir a lista para preservar o progresso das séries. */}
+        <div className={executionMode === 'guided' ? '' : 'hidden'}>
+          <GuidedWorkoutPlayer
+            key={plan.id + ':' + activeSession.id}
+            session={activeSession}
+            completedExerciseIds={completedExerciseIds}
+            onCompleteExercise={(id) => {
+              if (!completedExerciseIds[id]) toggleExerciseComplete(id);
+            }}
+            onPreviewExercise={onPreviewExercise}
+            onShowOverview={() => setExecutionMode('overview')}
+            onFinishWorkout={() => handleCompleteWorkout(false)}
+          />
+        </div>
+
+        {executionMode === 'overview' && (
+          <>
         {/* Student & Trainer Identification Card */}
         <div className="bg-gradient-to-br from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
@@ -505,10 +545,16 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
             </button>
           </div>
         )}
+          </>
+        )}
       </div>
 
+      {/* Cronômetro manual só na visão geral, compacto por padrão.
+          A execução guiada tem descanso próprio e não duplica o contador. */}
+      {executionMode === 'overview' && <RestTimer />}
+
       {/* Floating Bottom Bar with Share & Finish */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-3">
+      {executionMode === 'overview' && <div className="fixed bottom-0 left-0 right-0 z-20 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-3">
         <div className="max-w-md mx-auto flex items-center gap-2">
           <button
             onClick={onOpenShareModal}
@@ -527,7 +573,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
             <span>{isCompleting ? 'Salvando...' : 'Concluir Treino'}</span>
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* Modal de Celebração & Conclusão de Treino com Integração à Evolução */}
       {showFinishedModal && lastRecordedSummary && (
