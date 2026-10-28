@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CheckCircle2, ChevronLeft, Clock, Dumbbell, Eye, Pause, Play, SkipForward } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronLeft, Dumbbell, Eye, Play, SkipForward } from 'lucide-react';
 import { Exercise, WorkoutSession } from '../types';
 import { ExerciseThumbnail } from './ExerciseThumbnail';
 import { resolveExerciseMedia } from '../utils/exerciseMedia';
@@ -145,7 +145,7 @@ export const GuidedWorkoutPlayer: React.FC<GuidedWorkoutPlayerProps> = ({
         ? allCompleted ? 'Finalizar treino' : 'Próximo exercício'
         : phase === 'all_done'
           ? 'Finalizar treino'
-          : 'Começar série';
+          : restJustFinished ? 'Iniciar próxima série' : 'Começar série';
 
   const onPrimaryAction = () => {
     if (phase === 'performing') finishSet();
