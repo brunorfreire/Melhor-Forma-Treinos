@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { WorkoutPlan, ViewMode, Exercise } from './types';
 import { SAMPLE_WORKOUT_PLAN } from './data/defaultPlans';
 import { decodeWorkoutPlan } from './utils/codec';
@@ -14,6 +14,7 @@ import { StudentHistoryModal } from './components/StudentHistoryModal';
 import { saveStudentWorkout } from './utils/studentStorage';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { HorizontalScroller } from './components/ui/HorizontalScroller';
 import { MelhorFormaLogo } from './components/MelhorFormaLogo';
 import { MyWorkoutTodayModal } from './components/MyWorkoutTodayModal';
 import { StudentEvolutionView } from './components/StudentEvolutionView';
@@ -67,6 +68,20 @@ export default function App() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isTodayModalOpen, setIsTodayModalOpen] = useState(false);
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
+  const [isGuidedExecutionMode, setIsGuidedExecutionMode] = useState(false);
+
+  // Referência para o item de navegação ativo com scrollIntoView automático seguro
+  const activeNavRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (activeNavRef.current) {
+      activeNavRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest'
+      });
+    }
+  }, [viewMode]);
 
   // Navegação SPA segura
   const navigate = (route: string) => {
@@ -183,6 +198,14 @@ export default function App() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed && Array.isArray(parsed.sessions)) {
+            if (
+              parsed.trainerName === 'Prof. Anderson - Equipe Melhor Forma' ||
+              parsed.trainerName === 'Prof. Anderson - Melhor Forma Play' ||
+              parsed.trainerName === 'Melhor Forma Team (Demo Guiada)'
+            ) {
+              parsed.trainerName = 'Bruno Freire';
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            }
             setPlan(parsed);
           }
         }
@@ -337,10 +360,13 @@ export default function App() {
       {/* ========================================================================= */}
       {/* GLOBAL STREAMING NAVIGATION BAR (Melhor Forma Play) */}
       {/* ========================================================================= */}
-      <nav className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/90 px-3 sm:px-6 pt-[max(0.5rem,env(safe-area-inset-top,0.5rem))] pb-2 transition shadow-lg shadow-black/40">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <nav 
+        aria-label="Navegação principal"
+        className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/90 px-3 sm:px-6 pt-[max(0.5rem,env(safe-area-inset-top,0.5rem))] pb-2 transition shadow-lg shadow-black/40 w-full min-w-0 max-w-full"
+      >
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0 w-full">
           {/* Top Row on Mobile: Brand Logo & User Status (Clean, no cramped install button) */}
-          <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-2 shrink-0">
             <div 
               onClick={() => { setViewMode('home'); navigate('/app'); }}
               className="flex items-center gap-2 cursor-pointer group shrink-0 min-w-0"
@@ -409,83 +435,105 @@ export default function App() {
             </div>
           </div>
 
-          {/* Navigation Tabs: Responsive Flex with scroll on mobile */}
-          <div className="flex items-center overflow-x-auto no-scrollbar gap-1 sm:gap-1.5 text-xs font-bold w-full sm:w-auto pt-1 sm:pt-0 border-t border-slate-900 sm:border-0 scroll-smooth">
-            <button
-              onClick={() => setViewMode('home')}
-              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
-                viewMode === 'home'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
-              }`}
+          {/* Navigation Tabs: Accessible Horizontal Scroller with smooth pan and touch */}
+          <div className="w-full sm:w-auto min-w-0 max-w-full pt-1 sm:pt-0 border-t border-slate-900 sm:border-0">
+            <HorizontalScroller
+              ariaLabel="Navegação de seções"
+              innerClassName="gap-1 sm:gap-1.5 text-xs font-bold py-0.5 md:flex-wrap"
             >
-              <Film className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="hidden sm:inline">Catálogo Play</span>
-              <span className="sm:hidden text-[11px]">Início</span>
-            </button>
+              <button
+                ref={viewMode === 'home' ? activeNavRef : undefined}
+                type="button"
+                onClick={() => setViewMode('home')}
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 sm:px-3.5 py-2 transition whitespace-nowrap active:scale-95 ${
+                  viewMode === 'home'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
+                }`}
+              >
+                <Film className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="hidden sm:inline">Catálogo Play</span>
+                <span className="sm:hidden text-xs">Início</span>
+              </button>
 
-            <button
-              onClick={() => handleOpenCollectionWithLevel()}
-              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
-                viewMode === 'collection'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="hidden sm:inline">Coleção 40+</span>
-              <span className="sm:hidden text-[11px]">Coleção</span>
-            </button>
+              <button
+                ref={viewMode === 'collection' ? activeNavRef : undefined}
+                type="button"
+                onClick={() => handleOpenCollectionWithLevel()}
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 sm:px-3.5 py-2 transition whitespace-nowrap active:scale-95 ${
+                  viewMode === 'collection'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="hidden sm:inline">Coleção 40+</span>
+                <span className="sm:hidden text-xs">Coleção</span>
+              </button>
 
-            <button
-              onClick={() => setIsTodayModalOpen(true)}
-              className="min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-white border border-emerald-500/35 shadow-sm shrink-0"
-              title="Descobrir o treino ideal para os objetivos de hoje"
-            >
-              <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="hidden sm:inline">Treino de Hoje</span>
-              <span className="sm:hidden text-[11px]">Hoje</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setIsTodayModalOpen(true)}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 sm:px-3.5 py-2 transition whitespace-nowrap active:scale-95 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-white border border-emerald-500/35 shadow-sm"
+                title="Descobrir o treino ideal para os objetivos de hoje"
+              >
+                <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="hidden sm:inline">Treino de Hoje</span>
+                <span className="sm:hidden text-xs">Hoje</span>
+              </button>
 
-            <button
-              onClick={() => setViewMode('student')}
-              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
-                viewMode === 'student'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="hidden sm:inline">Meu Treino</span>
-              <span className="sm:hidden text-[11px]">Treino</span>
-            </button>
+              <button
+                ref={viewMode === 'student' ? activeNavRef : undefined}
+                type="button"
+                onClick={() => setViewMode('student')}
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 sm:px-3.5 py-2 transition whitespace-nowrap active:scale-95 ${
+                  viewMode === 'student'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="hidden sm:inline">Meu Treino</span>
+                <span className="sm:hidden text-xs">Treino</span>
+              </button>
 
-            <button
-              onClick={() => setViewMode('evolution')}
-              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
-                viewMode === 'evolution'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
-              }`}
-              title="Acompanhar minha evolução e histórico de treinos concluídos"
-            >
-              <Trophy className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-              <span className="hidden sm:inline">Minha Evolução</span>
-              <span className="sm:hidden text-[11px]">Evolução</span>
-            </button>
+              <button
+                ref={viewMode === 'evolution' ? activeNavRef : undefined}
+                type="button"
+                onClick={() => setViewMode('evolution')}
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 sm:px-3.5 py-2 transition whitespace-nowrap active:scale-95 ${
+                  viewMode === 'evolution'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
+                }`}
+                title="Acompanhar minha evolução e histórico de treinos concluídos"
+              >
+                <Trophy className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <span className="hidden sm:inline">Minha Evolução</span>
+                <span className="sm:hidden text-xs">Evolução</span>
+              </button>
 
-            <button
-              onClick={() => setViewMode('editor')}
-              className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0 ${
-                viewMode === 'editor'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
-              }`}
-            >
-              <Dumbbell className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="hidden sm:inline">Treinador</span>
-              <span className="sm:hidden text-[11px]">Editor</span>
-            </button>
+              {/* Editor visível exclusivamente para Treinador e Administrador */}
+              {isPrivileged && (
+                <button
+                  ref={viewMode === 'editor' ? activeNavRef : undefined}
+                  type="button"
+                  onClick={() => setViewMode('editor')}
+                  className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 sm:px-3.5 py-2 transition whitespace-nowrap active:scale-95 ${
+                    viewMode === 'editor'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
+                  }`}
+                >
+                  <Dumbbell className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="hidden sm:inline">Treinador</span>
+                  <span className="sm:hidden text-xs">Editor</span>
+                </button>
+              )}
+
+              {/* Espaçador final de respiro garantido no mobile para visualização completa do último item */}
+              <div className="w-4 shrink-0 sm:hidden" aria-hidden="true" />
+            </HorizontalScroller>
           </div>
         </div>
       </nav>
@@ -534,8 +582,9 @@ export default function App() {
             onBackToCatalog={() => setViewMode('home')}
             onOpenTodayRecommender={() => setIsTodayModalOpen(true)}
             onOpenEvolution={() => setViewMode('evolution')}
+            onGuidedModeChange={setIsGuidedExecutionMode}
           />
-          <RestTimer />
+          <RestTimer hidden={isGuidedExecutionMode} />
         </>
       )}
 

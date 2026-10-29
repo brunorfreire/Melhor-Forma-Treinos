@@ -3,7 +3,7 @@ import { WorkoutPlan } from '../types';
 export const SAMPLE_WORKOUT_PLAN: WorkoutPlan = {
   id: 'mf-treino-sample',
   studentName: 'Patrícia Silveira',
-  trainerName: 'Prof. Anderson - Melhor Forma Play',
+  trainerName: 'Bruno Freire',
   trainerPhone: '5511999999999',
   goal: 'Força Funcional & Qualidade de Vida 40+',
   frequency: '3x a 4x por semana (Saúde e Longevidade)',

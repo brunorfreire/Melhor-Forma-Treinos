@@ -45,6 +45,7 @@ import { TrainerCatalogTab } from './trainer/TrainerCatalogTab';
 import { TrainerExercisesTab } from './trainer/TrainerExercisesTab';
 import { TrainerVideoValidatorTab } from './trainer/TrainerVideoValidatorTab';
 import { TrainerMuscleWikiTab } from './trainer/TrainerMuscleWikiTab';
+import { TrainerExecutionBlocksSection } from './trainer/TrainerExecutionBlocksSection';
 
 const normalizeText = (text: string): string => {
   return text
@@ -686,7 +687,7 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
                   type="text"
                   value={plan.trainerName}
                   onChange={(e) => updateField('trainerName', e.target.value)}
-                  placeholder="Ex: Prof. Anderson"
+                  placeholder="Ex: Bruno Freire"
                   className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                 />
               </div>
@@ -779,6 +780,12 @@ export const TrainerEditor: React.FC<TrainerEditorProps> = ({
                   className="w-full bg-slate-950/60 border border-slate-800/60 rounded-xl px-3 py-1 text-xs text-slate-300 focus:outline-none"
                 />
               </div>
+
+              {/* Seção Métodos de Execução Guiada (Simples, Combinado, Conjugado, Circuitado) */}
+              <TrainerExecutionBlocksSection
+                session={activeSession}
+                onUpdateSession={updateActiveSession}
+              />
 
               {/* Exercise Library Search & Add Bar */}
               <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 space-y-3 shadow-sm">

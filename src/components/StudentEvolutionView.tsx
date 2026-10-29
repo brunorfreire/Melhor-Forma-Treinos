@@ -132,30 +132,30 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col pb-20">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-3.5">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 pt-[max(0.75rem,env(safe-area-inset-top,0.75rem))] pb-3.5">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={onBackToCatalog}
-              className="min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition flex items-center justify-center"
+              className="min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition flex items-center justify-center shrink-0"
               aria-label="Voltar para o catálogo"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                  Histórico Real do Aluno
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full shrink-0">
+                  Histórico Real
                 </span>
                 <span className="text-xs text-slate-400 hidden sm:inline">• Sem calorias fictícias</span>
               </div>
-              <h1 className="text-lg sm:text-xl font-black text-white">
+              <h1 className="text-base sm:text-xl font-black text-white truncate">
                 Minha Evolução 40+
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setIsManualModalOpen(true)}
               className="min-h-[42px] px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-xs font-bold text-slate-200 hover:text-white flex items-center gap-1.5 transition active:scale-95"
@@ -178,7 +178,7 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto w-full px-3 sm:px-6 py-6 space-y-6 flex-1">
+      <main className="max-w-5xl mx-auto w-full px-3 sm:px-6 py-6 space-y-6 flex-1 min-w-0">
         
         {/* Banner Motivacional com Princípio da Longevidade Ativa */}
         <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-950 border border-emerald-500/30 p-4 sm:p-6 shadow-xl">
@@ -209,7 +209,7 @@ export const StudentEvolutionView: React.FC<StudentEvolutionViewProps> = ({
         </div>
 
         {/* 4 Cards de Métricas Reais (Sem estimativas de queima calórica falsa) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="grid min-w-0 grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
           <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between shadow-lg">
             <div className="flex items-center justify-between text-slate-400">
               <span className="text-xs font-semibold">Treinos Concluídos</span>

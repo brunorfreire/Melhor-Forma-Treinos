@@ -55,6 +55,7 @@ import {
 import { ExerciseThumbnail } from './ExerciseThumbnail';
 import { PremiumModal } from './PremiumModal';
 import { MyWorkoutTodayModal } from './MyWorkoutTodayModal';
+import { HorizontalScroller } from './ui/HorizontalScroller';
 
 interface StreamingHomeViewProps {
   onSelectSessionToTrain: (plan: WorkoutPlan) => void;
@@ -97,12 +98,37 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
   const [bannerImgError, setBannerImgError] = useState(false);
   const [cardImgErrors, setCardImgErrors] = useState<Record<string, boolean>>({});
 
+  // Referência para rolagem automática até os resultados filtrados após seleção explícita de categoria
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const pendingCategoryScrollRef = useRef<boolean>(false);
+  const [categorySelectCount, setCategorySelectCount] = useState<number>(0);
+
   // Recarrega favoritos, sessão ativa e estatísticas ao montar
   useEffect(() => {
     setActiveSession(getActiveWorkoutSession());
     setFavoriteIds(getFavoriteWorkoutIds());
     setProgressStats(getStudentProgressStats());
   }, []);
+
+  // Rolagem automática somente após seleção explícita de card de categoria (nunca no carregamento inicial nem ao digitar na busca)
+  useEffect(() => {
+    if (!pendingCategoryScrollRef.current) return;
+    pendingCategoryScrollRef.current = false;
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const rafId = window.requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+
+    return () => window.cancelAnimationFrame(rafId);
+  }, [activeFilter, categorySelectCount]);
 
   // 72 Workouts Catalog Loading (Published only for student streaming view)
   const catalogWorkouts = useMemo(() => getAllCatalogWorkouts(), []);
@@ -1056,30 +1082,55 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
           </div>
         )}
 
-        {/* Abas de Navegação / Grupos de Filtros */}
-        <div className="flex items-center gap-1.5 sm:gap-2 py-3 overflow-x-auto no-scrollbar text-xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
-            <Filter className="w-3.5 h-3.5 text-emerald-400" />
-            Filtros:
-          </span>
-          {categoryGroupsList.map((grp) => (
-            <button
-              key={grp.id}
-              onClick={() => setCategoryGroup(grp.id as any)}
-              className={`min-h-[40px] px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all border flex items-center gap-1.5 shrink-0 active:scale-95 ${
-                categoryGroup === grp.id
-                  ? 'bg-slate-800 text-white border-emerald-500/80 shadow-sm shadow-emerald-950 font-black'
-                  : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-850'
-              }`}
+        {/* Abas de Navegação / Grupos de Filtros: Totalmente acessível no mobile */}
+        <div className="py-2.5 w-full min-w-0 max-w-full">
+          {/* Rótulo Filtros posicionado acima no mobile para não espremer botões */}
+          <div className="flex items-center justify-between pb-1.5 px-0.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Filtros do Catálogo:</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium sm:hidden">
+              Arraste para o lado →
+            </span>
+          </div>
+
+          <div
+            role="group"
+            aria-label="Filtros do catálogo de treinos"
+            className="w-full min-w-0 max-w-full"
+          >
+            <HorizontalScroller
+              ariaLabel="Filtros do catálogo de treinos"
+              innerClassName="gap-2 px-0.5 py-1"
             >
-              <span>{grp.label}</span>
-              <span className="text-[10px] opacity-70">({grp.count})</span>
-            </button>
-          ))}
+              {categoryGroupsList.map((grp) => {
+                const isGroupActive = categoryGroup === grp.id;
+                return (
+                  <button
+                    key={grp.id}
+                    type="button"
+                    aria-pressed={isGroupActive}
+                    onClick={() => setCategoryGroup(grp.id as any)}
+                    className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-bold whitespace-nowrap transition-all border active:scale-95 ${
+                      isGroupActive
+                        ? 'bg-slate-800 text-white border-emerald-500/80 shadow-md shadow-emerald-950 font-black'
+                        : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-850'
+                    }`}
+                  >
+                    <span>{grp.label}</span>
+                    <span className="text-[10px] opacity-75">({grp.count})</span>
+                  </button>
+                );
+              })}
+              {/* Espaçador final para garantir visibilidade do último filtro */}
+              <div className="w-4 shrink-0 sm:hidden" aria-hidden="true" />
+            </HorizontalScroller>
+          </div>
         </div>
 
-        {/* Grade Responsiva de Categorias: 2 colunas no celular, 3 ou 4 em tablets/computadores */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-2.5 pt-1 pb-3">
+        {/* Grade Responsiva de Categorias: 1 coluna em 320px, 2 colunas em 340px+, 3 ou 4 em telas maiores */}
+        <div className="grid min-w-0 grid-cols-1 min-[340px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-2.5 pt-1 pb-3">
           {visibleCategories.map((cat) => {
             const isSelected = activeFilter === cat.id;
             const Icon = cat.icon;
@@ -1088,13 +1139,11 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
               <button
                 key={cat.id}
                 onClick={() => {
+                  pendingCategoryScrollRef.current = true;
                   setActiveFilter(cat.id);
-                  const el = document.getElementById('catalogo-treinos');
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth' });
-                  }
+                  setCategorySelectCount((prev) => prev + 1);
                 }}
-                className={`group relative text-left min-h-[52px] sm:min-h-[58px] h-auto p-2.5 sm:p-3 rounded-xl border transition-all duration-200 active:scale-[0.98] flex flex-col justify-between ${
+                className={`group relative text-left min-h-[56px] sm:min-h-[58px] h-auto p-2.5 sm:p-3 rounded-xl border transition-all duration-200 active:scale-[0.98] flex flex-col justify-between min-w-0 w-full ${
                   isSelected
                     ? cat.id === 'premium'
                       ? 'bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/30 text-white shadow-lg shadow-amber-950/50'
@@ -1106,8 +1155,8 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                 aria-pressed={isSelected}
                 aria-label={`Filtrar por ${cat.name}, ${count} treinos disponíveis`}
               >
-                <div className="flex items-start justify-between gap-1.5 w-full">
-                  <div className="flex items-center gap-1.5">
+                <div className="flex items-start justify-between gap-1.5 w-full min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <div className={`p-1.5 rounded-lg shrink-0 ${
                       isSelected 
                         ? (cat.id === 'premium' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300') 
@@ -1118,10 +1167,10 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                       <Icon className="w-4 h-4 shrink-0" />
                     </div>
                     {isSelected && (
-                      <span className={`w-2 h-2 rounded-full animate-pulse ${cat.id === 'premium' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                      <span className={`w-2 h-2 rounded-full animate-pulse shrink-0 ${cat.id === 'premium' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
                     )}
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 max-w-[105px] truncate ${
                     isSelected
                       ? (cat.id === 'premium' ? 'bg-amber-500/30 text-amber-200 border-amber-400/50' : 'bg-emerald-500/30 text-emerald-200 border-emerald-400/50')
                       : count === 0 && searchTerm.trim() !== ''
@@ -1132,7 +1181,7 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
                   </span>
                 </div>
 
-                <div className="mt-1.5 w-full">
+                <div className="mt-1.5 w-full min-w-0">
                   <div className={`text-xs font-bold leading-snug break-words ${isSelected ? 'text-white font-extrabold' : 'text-slate-200'}`}>
                     {cat.name}
                   </div>
@@ -1151,6 +1200,12 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
       {/* ========================================================================= */}
       {/* 5. CARROSSÉIS OU GRID (Conforme Busca/Filtro)                              */}
       {/* ========================================================================= */}
+      <div
+        ref={resultsRef}
+        id="catalogo-resultados"
+        data-testid="catalog-results-section"
+        className="w-full scroll-mt-24 sm:scroll-mt-28"
+      >
       {searchTerm.trim() !== '' || activeFilter !== 'todos' ? (
         /* Grid de Resultados Filtrados: 2 colunas no celular conforme Regra 5 */
         <section className="w-full max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6">
@@ -1238,7 +1293,7 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 xs:gap-3 sm:gap-4">
+            <div className="grid min-w-0 grid-cols-1 min-[340px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-4">
               {filteredSessions.map((session) => (
                 <WorkoutCard
                   key={session.id}
@@ -1504,6 +1559,7 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
           />
         </div>
       )}
+      </div>
 
       {/* ========================================================================= */}
       {/* 6. MODAL DE PRÉ-VISUALIZAÇÃO COMPLETA DA SESSÃO                           */}
@@ -1805,7 +1861,7 @@ const CarouselRow: React.FC<CarouselRowProps> = ({
       {/* Horizontal Scroll Track com Peek Effect (larguras calculadas para revelar borda do próximo card) */}
       <div
         ref={scrollRef}
-        className="flex gap-2.5 sm:gap-3.5 overflow-x-auto pb-3 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory w-full"
+        className="flex gap-2.5 sm:gap-3.5 overflow-x-auto pb-3 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory w-full min-w-0 max-w-full overscroll-x-contain touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {sessions.map((session) => (
           <div 

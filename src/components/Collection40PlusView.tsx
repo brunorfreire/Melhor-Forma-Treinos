@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Sparkles, 
@@ -48,6 +48,28 @@ export const Collection40PlusView: React.FC<Collection40PlusViewProps> = ({
     (initialLevelId as any) || 'nivel-1'
   );
   const [activePillarFilter, setActivePillarFilter] = useState<string>('todos');
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRef = useRef<boolean>(false);
+  const [filterClickCount, setFilterClickCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!pendingScrollRef.current) return;
+    pendingScrollRef.current = false;
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const rafId = window.requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+
+    return () => window.cancelAnimationFrame(rafId);
+  }, [activePillarFilter, activeLevelId, filterClickCount]);
 
   const currentLevel = LEVELS_40_PLUS.find(l => l.id === activeLevelId) || LEVELS_40_PLUS[0];
   const levelSessions = SESSIONS_40_PLUS.filter(s => {
@@ -158,11 +180,15 @@ export const Collection40PlusView: React.FC<Collection40PlusViewProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {PILLARS_40_PLUS.map((pillar) => (
               <div
                 key={pillar.id}
-                onClick={() => setActivePillarFilter(activePillarFilter === pillar.id ? 'todos' : pillar.id)}
+                onClick={() => {
+                  pendingScrollRef.current = true;
+                  setActivePillarFilter(activePillarFilter === pillar.id ? 'todos' : pillar.id);
+                  setFilterClickCount((prev) => prev + 1);
+                }}
                 className={`p-4 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${pillar.borderColor} ${
                   activePillarFilter === pillar.id
                     ? 'bg-slate-900 ring-2 ring-emerald-400 shadow-lg'
@@ -269,7 +295,7 @@ export const Collection40PlusView: React.FC<Collection40PlusViewProps> = ({
           {/* ========================================================================= */}
           {/* 4. LISTA DAS 5 SESSÕES DO NÍVEL ATIVO */}
           {/* ========================================================================= */}
-          <div className="space-y-4">
+          <div ref={resultsRef} className="space-y-4 scroll-mt-24 sm:scroll-mt-28">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
                 <Layers className="w-4 h-4 text-emerald-400" />

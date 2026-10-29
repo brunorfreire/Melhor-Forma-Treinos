@@ -420,7 +420,7 @@ export function convertCatalogWorkoutToWorkoutPlan(
   return {
     id: `plan-${workout.id}-${Date.now()}`,
     studentName: 'Aluno(a) Melhor Forma',
-    trainerName: workout.authorTrainer || 'Prof. Anderson - Equipe Melhor Forma',
+    trainerName: workout.authorTrainer || 'Bruno Freire',
     goal: `${workout.title} (${workout.level})`,
     frequency: 'Conforme planejamento individual',
     generalNotes: `${workout.description} | Equipamentos: ${workout.equipments.join(', ')}`,

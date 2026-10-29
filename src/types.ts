@@ -27,11 +27,24 @@ export interface Exercise {
   mediaType?: 'image' | 'video' | 'youtube' | 'vimeo' | 'none';
 }
 
+export type ExecutionMethodType = 'simples' | 'combinado' | 'conjugado' | 'circuitado';
+
+export interface GuidedExecutionBlock {
+  id: string;
+  name?: string;
+  method: ExecutionMethodType;
+  exerciseIds: string[]; // Ordered list of Exercise.id belonging to this block
+  rounds: number; // Number of rounds for the block
+  restBetweenExercisesSeconds: number; // Rest between exercises inside a round (can be 0)
+  restBetweenRoundsSeconds: number; // Rest after completing the last exercise of a round
+}
+
 export interface WorkoutSession {
   id: string;
   name: string;
   focus: string;
   exercises: Exercise[];
+  executionBlocks?: GuidedExecutionBlock[];
 }
 
 export interface WorkoutPlan {
@@ -45,6 +58,7 @@ export interface WorkoutPlan {
   sessions: WorkoutSession[];
   createdAt: string;
   updatedAt?: string;
+  isDemoSession?: boolean;
 }
 
 export type ViewMode = 'home' | 'collection' | 'student' | 'evolution' | 'editor';
