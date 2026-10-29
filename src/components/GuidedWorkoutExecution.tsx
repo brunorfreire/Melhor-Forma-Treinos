@@ -83,6 +83,7 @@ interface GuidedWorkoutExecutionProps {
   onSwitchToOverview: () => void;
   isCompleting?: boolean;
   isDemoSession?: boolean;
+  exerciseContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const GuidedWorkoutExecution: React.FC<GuidedWorkoutExecutionProps> = ({
@@ -100,7 +101,8 @@ export const GuidedWorkoutExecution: React.FC<GuidedWorkoutExecutionProps> = ({
   onFinishWorkout,
   onSwitchToOverview,
   isCompleting = false,
-  isDemoSession = false
+  isDemoSession = false,
+  exerciseContainerRef
 }) => {
   const { steps, validation } = useMemo(() => compileGuidedSessionSteps(session), [session]);
 
@@ -663,7 +665,9 @@ export const GuidedWorkoutExecution: React.FC<GuidedWorkoutExecutionProps> = ({
       {/* CARD DO EXERCÍCIO ATUAL + EXECUTION ACTION AREA ESTÁVEL             */}
       {/* =================================================================== */}
       <div
-        className={`bg-slate-900/95 border rounded-2xl p-3.5 sm:p-4 space-y-3.5 shadow-xl transition ${
+        ref={exerciseContainerRef}
+        data-testid="guided-exercise-card"
+        className={`scroll-mt-20 sm:scroll-mt-24 bg-slate-900/95 border rounded-2xl p-3.5 sm:p-4 space-y-3.5 shadow-xl transition ${
           stepPhase === 'performing'
             ? 'border-emerald-500/60 ring-1 ring-emerald-500/20'
             : stepPhase === 'resting' || stepPhase === 'ready_next'

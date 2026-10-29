@@ -33,6 +33,12 @@ export function getAllCatalogWorkouts(): CatalogWorkout[] {
         const initialMap = new Map(INITIAL_CATALOG_WORKOUTS.map(w => [w.id, w]));
         return parsed.map((w: CatalogWorkout) => {
           const initial = initialMap.get(w.id);
+          const normalizedTitle =
+            w.id === 'w-sup-05' ||
+            (typeof w.title === 'string' && /puxada\s*&\s*empurrada/i.test(w.title))
+              ? 'Puxar e Empurrar'
+              : w.title;
+
           if (
             initial &&
             (!w.coverImage ||
@@ -41,13 +47,17 @@ export function getAllCatalogWorkouts(): CatalogWorkout[] {
           ) {
             return {
               ...w,
+              title: normalizedTitle,
               coverImage: initial.coverImage,
               photoAlt: initial.photoAlt,
               modelGender: initial.modelGender,
               modelAgeGroup: initial.modelAgeGroup
             };
           }
-          return w;
+          return {
+            ...w,
+            title: normalizedTitle
+          };
         });
       }
     }

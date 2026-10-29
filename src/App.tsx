@@ -198,12 +198,34 @@ export default function App() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed && Array.isArray(parsed.sessions)) {
+            let needsSave = false;
             if (
               parsed.trainerName === 'Prof. Anderson - Equipe Melhor Forma' ||
               parsed.trainerName === 'Prof. Anderson - Melhor Forma Play' ||
               parsed.trainerName === 'Melhor Forma Team (Demo Guiada)'
             ) {
               parsed.trainerName = 'Bruno Freire';
+              needsSave = true;
+            }
+            parsed.sessions = parsed.sessions.map((s: any) => {
+              if (
+                s &&
+                (s.id === 'sess-w-sup-05' ||
+                  (typeof s.name === 'string' && /puxada\s*&\s*empurrada/i.test(s.name)))
+              ) {
+                needsSave = true;
+                return { ...s, name: 'Puxar e Empurrar' };
+              }
+              return s;
+            });
+            if (typeof parsed.goal === 'string' && /puxada\s*&\s*empurrada/i.test(parsed.goal)) {
+              parsed.goal = parsed.goal.replace(
+                /Puxada\s*&\s*Empurrada(\s+em\s+Equil[ií]brio)?/gi,
+                'Puxar e Empurrar'
+              );
+              needsSave = true;
+            }
+            if (needsSave) {
               localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
             }
             setPlan(parsed);

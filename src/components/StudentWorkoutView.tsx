@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   CheckCircle2,
   Circle,
@@ -56,6 +56,17 @@ const DEFAULT_REST_STATE: GuidedSessionRestState = {
   isRunning: false
 };
 
+export function formatDivisionButtonLabel(rawName: string, fallbackIndex: number = 0, sessionId?: string): string {
+  if (
+    sessionId === 'sess-w-sup-05' ||
+    (typeof rawName === 'string' && /puxada\s*&\s*empurrada/i.test(rawName))
+  ) {
+    return 'Puxar e Empurrar';
+  }
+  const baseLabel = (rawName || '').split('-')[0].trim();
+  return baseLabel || `Treino ${fallbackIndex + 1}`;
+}
+
 export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   plan,
   onEditPlan,
@@ -66,16 +77,13 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   onOpenEvolution,
   onGuidedModeChange
 }) => {
-  // Quando a ficha inicial é a ficha demonstrativa padrão ('mf-treino-sample'),
-  // inicia exibindo a sessão demonstrativa dos 4 métodos em Execução Guiada para validação imediata na prévia.
-  const [isDemoModeActive, setIsDemoModeActive] = useState<boolean>(
-    () => plan.id === 'mf-treino-sample' || !!plan.isDemoSession
-  );
+  // Inicia em modo demonstração apenas quando a ficha é explicitamente de demonstração (isDemoSession: true).
+  // Assim, as divisões reais da ficha do aluno ou do catálogo (ex.: "Puxar e Empurrar") aparecem diretamente.
+  const [isDemoModeActive, setIsDemoModeActive] = useState<boolean>(() => !!plan.isDemoSession);
 
-  // Modo de visualização: 'overview' (Visão Geral) | 'guided' (Execução Guiada)
-  const [workoutViewMode, setWorkoutViewMode] = useState<'overview' | 'guided'>(() =>
-    plan.id === 'mf-treino-sample' || !!plan.isDemoSession ? 'guided' : 'overview'
-  );
+  // Modo de visualização: inicia em 'guided' (Execução Guiada) para apresentar o 1º exercício com "Começar Série 1",
+  // permitindo alternar livremente para 'overview' (Visão Geral) sem perder progresso.
+  const [workoutViewMode, setWorkoutViewMode] = useState<'overview' | 'guided'>('guided');
 
   // Índices de sessão separados para a ficha real e a ficha de demonstração
   const [realSessionIndex, setRealSessionIndex] = useState(0);
@@ -86,7 +94,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   const [demoCompletedExerciseIds, setDemoCompletedExerciseIds] = useState<Record<string, boolean>>({});
 
   // Estado de passos guiados concluídos, posição atual, fase e cronômetro por sessão
-  // Garante preservação integral do progresso ao alternar entre Visão Geral e Execução Guiada
+  // Garante preservação integral do progresso ao alternar entre Visão Geral, Execução Guiada e divisões
   const [completedStepIdsBySession, setCompletedStepIdsBySession] = useState<
     Record<string, Record<string, boolean>>
   >({});
@@ -96,6 +104,11 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
     Record<string, GuidedSessionRestState>
   >({});
 
+  // Referência para o container do exercício atual (Execução Guiada) ou início da lista (Visão Geral)
+  const exerciseContainerRef = useRef<HTMLDivElement | null>(null);
+  const pendingDivisionScrollRef = useRef<boolean>(false);
+  const [divisionClickCount, setDivisionClickCount] = useState<number>(0);
+
   const [showFinishedModal, setShowFinishedModal] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [lastRecordedSummary, setLastRecordedSummary] = useState<{
@@ -104,6 +117,32 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
     duration: number;
     isDemo?: boolean;
   } | null>(null);
+
+  // Sincroniza quando o usuário seleciona uma nova ficha no catálogo
+  useEffect(() => {
+    setIsDemoModeActive(!!plan.isDemoSession);
+    setRealSessionIndex(0);
+  }, [plan.id, plan.isDemoSession]);
+
+  // Rolagem automática após clique explícito no card de divisão (respeita prefers-reduced-motion e não dispara no carregamento inicial)
+  useEffect(() => {
+    if (!pendingDivisionScrollRef.current) return;
+    pendingDivisionScrollRef.current = false;
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const rafId = window.requestAnimationFrame(() => {
+      exerciseContainerRef.current?.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+
+    return () => window.cancelAnimationFrame(rafId);
+  }, [realSessionIndex, demoSessionIndex, divisionClickCount, workoutViewMode]);
 
   useEffect(() => {
     if (onGuidedModeChange) {
@@ -279,6 +318,56 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
 
   const handleExitDemoSession = () => {
     setIsDemoModeActive(false);
+  };
+
+  // Seleciona a divisão correspondente, posiciona na primeira etapa pendente (preservando progresso) e rola até o exercício
+  const handleSelectDivision = (idx: number) => {
+    const targetSession = effectivePlan.sessions[idx];
+    if (!targetSession) return;
+
+    setActiveSessionIndex(idx);
+
+    const targetKey = `${effectivePlan.id || 'plan'}-${targetSession.id}`;
+    const targetCompiled = compileGuidedSessionSteps(targetSession);
+    const targetSteps = targetCompiled.steps;
+    const savedStepsMap = completedStepIdsBySession[targetKey] || {};
+    const existingPhase = stepPhaseBySession[targetKey];
+
+    // Se a sessão não estiver no meio de uma série em execução ('performing') ou descanso ativo ('resting' / 'ready_next'),
+    // posiciona automaticamente no primeiro passo pendente da divisão sem apagar o progresso já concluído.
+    if (
+      existingPhase !== 'performing' &&
+      existingPhase !== 'resting' &&
+      existingPhase !== 'ready_next' &&
+      targetSteps.length > 0
+    ) {
+      const firstPendingIdx = targetSteps.findIndex(
+        (s) => !savedStepsMap[s.stepId] && !completedExerciseIds[s.exercise.id]
+      );
+      if (firstPendingIdx >= 0) {
+        setStepIndexBySession((prev) => ({
+          ...prev,
+          [targetKey]: firstPendingIdx
+        }));
+        setStepPhaseBySession((prev) => ({
+          ...prev,
+          [targetKey]: 'ready'
+        }));
+      } else {
+        // Todos os passos desta divisão já foram concluídos
+        setStepIndexBySession((prev) => ({
+          ...prev,
+          [targetKey]: targetSteps.length - 1
+        }));
+        setStepPhaseBySession((prev) => ({
+          ...prev,
+          [targetKey]: 'finished'
+        }));
+      }
+    }
+
+    pendingDivisionScrollRef.current = true;
+    setDivisionClickCount((prev) => prev + 1);
   };
 
   return (
@@ -458,29 +547,39 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
               <Layers className="w-3.5 h-3.5 text-emerald-400" /> Escolha o Treino de Hoje:
             </span>
             <span className="text-[11px] text-emerald-400 font-medium">
-              {effectivePlan.sessions.length} divisões
+              {effectivePlan.sessions.length} {effectivePlan.sessions.length === 1 ? 'divisão' : 'divisões'}
             </span>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {effectivePlan.sessions.map((session, idx) => (
-              <button
-                key={session.id || idx}
-                onClick={() => setActiveSessionIndex(idx)}
-                className={`flex-1 min-w-[110px] py-2.5 px-3 rounded-xl font-bold text-xs transition border flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-98 ${
-                  idx === activeSessionIndex
-                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-950'
-                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-850 hover:text-slate-200'
-                }`}
-              >
-                <span className="truncate max-w-[130px]">
-                  {session.name.split('-')[0].trim() || `Treino ${idx + 1}`}
-                </span>
-                <span className="text-[10px] opacity-80 font-normal">
-                  {session.exercises.length} exercícios
-                </span>
-              </button>
-            ))}
+            {effectivePlan.sessions.map((session, idx) => {
+              const isSelected = idx === activeSessionIndex;
+              const divisionLabel = formatDivisionButtonLabel(session.name, idx, session.id);
+              return (
+                <button
+                  key={session.id || idx}
+                  type="button"
+                  data-testid={`division-button-${idx}`}
+                  aria-pressed={isSelected}
+                  onClick={() => handleSelectDivision(idx)}
+                  className={`flex-1 min-w-[130px] min-h-[54px] py-2.5 px-3.5 rounded-xl font-bold text-xs transition-all border flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-[0.98] ${
+                    isSelected
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 ring-2 ring-emerald-400/30 shadow-lg shadow-emerald-950'
+                      : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850 hover:text-white'
+                  }`}
+                >
+                  <span className="text-center leading-snug break-words px-0.5">
+                    {divisionLabel}
+                  </span>
+                  <span className="text-[10px] opacity-90 font-normal flex items-center gap-1">
+                    <span>{session.exercises.length} exercícios</span>
+                    {isSelected && (
+                      <span className="font-semibold text-emerald-100">• Ver treino ↓</span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -536,6 +635,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
             onSwitchToOverview={() => setWorkoutViewMode('overview')}
             isCompleting={isCompleting}
             isDemoSession={isDemoModeActive || !!effectivePlan.isDemoSession}
+            exerciseContainerRef={exerciseContainerRef}
           />
         ) : (
           /* =================================================================== */
@@ -547,7 +647,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold text-white leading-tight truncate">
-                    {activeSession.name}
+                    {formatDivisionButtonLabel(activeSession.name, activeSessionIndex, activeSession.id)}
                   </h3>
                   {activeSession.focus && (
                     <p className="text-xs text-emerald-400 mt-0.5 truncate">
@@ -584,7 +684,11 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
             </div>
 
             {/* Exercises List */}
-            <div className="space-y-3 pt-1">
+            <div
+              ref={exerciseContainerRef}
+              data-testid="overview-exercises-list"
+              className="scroll-mt-20 sm:scroll-mt-24 space-y-3 pt-1"
+            >
               {activeSession.exercises.map((exercise, idx) => {
                 const isCompleted = !!completedExerciseIds[exercise.id];
                 const media = resolveExerciseMedia(exercise);

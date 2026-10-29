@@ -380,7 +380,7 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
   },
   {
     id: 'w-sup-05',
-    title: 'Puxada & Empurrada em Equilíbrio',
+    title: 'Puxar e Empurrar',
     description: 'Combinação balanceada de supino com halteres e remada serrote.',
     category: 'superiores',
     level: 'intermediario',
