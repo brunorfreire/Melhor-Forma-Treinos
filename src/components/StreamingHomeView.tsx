@@ -45,6 +45,13 @@ import {
   getHydratedWorkout, 
   convertCatalogWorkoutToWorkoutPlan 
 } from '../data/workoutCatalogService';
+import { 
+  matchesClassificationFilter, 
+  isPushWorkout, 
+  isPullWorkout, 
+  getWorkoutExerciseCount, 
+  getWorkoutClassification 
+} from '../services/catalogClassificationService';
 import { CATALOG_COLLECTIONS, DEFAULT_FREE_WORKOUT_IDS } from '../data/catalogWorkouts';
 import { 
   getActiveWorkoutSession, 
@@ -143,13 +150,15 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
   const catalogWorkouts = useMemo(() => getAllCatalogWorkouts(), []);
 
   const allStreamSessions: CollectionWorkoutSession[] = useMemo(() => {
-    // Todos os 72 treinos do catálogo organizados com suas fotos e metadados individuais
+    // Todos os 72 treinos do catálogo organizados com suas fotos, metadados anatômicos e contagem real
     const catalogSessionsMapped: CollectionWorkoutSession[] = catalogWorkouts.map(w => {
+      const meta = getWorkoutClassification(w.id);
       const accessLevel = w.accessLevel || (DEFAULT_FREE_WORKOUT_IDS.includes(w.id) ? 'free' : 'premium');
       const isFree = accessLevel === 'free';
       // Para vitrine pública, não expõe prescrições de treinos Premium antes da autorização real
       const hydrated = isFree ? getHydratedWorkout(w.id) : null;
       const exercises = hydrated ? hydrated.exercises : [];
+      const exerciseCount = w.exerciseCount || meta?.exerciseCount || getWorkoutExerciseCount(w.id);
       const levelId = w.level === 'iniciante' ? 'nivel-1' : w.level === 'intermediario' ? 'nivel-2' : 'nivel-3';
       const pillarId = w.category === 'forca_40_plus' ? 'forca' :
                        w.category === 'cardiorespiratorio' ? 'condicionamento' :
@@ -172,18 +181,16 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
         targetAudience: 'Mulheres e homens 40+ buscando saúde e longevidade',
         coverImage: w.coverImage,
         exercises,
-        accessLevel: w.accessLevel || (DEFAULT_FREE_WORKOUT_IDS.includes(w.id) ? 'free' : 'premium'),
+        exerciseCount,
+        primaryFocus: meta?.primaryFocus || w.primaryFocus,
+        movementPattern: meta?.movementPattern || w.movementPattern,
+        secondaryFocus: meta?.secondaryFocus || w.secondaryFocus || [],
+        accessLevel,
         photoAlt: w.photoAlt
       };
     });
 
-    // Mescla com a coleção Força 40+ garantindo unicidade de IDs
-    const existingIds = new Set(catalogSessionsMapped.map(s => s.id));
-    const additional = SESSIONS_40_PLUS.filter(s => !existingIds.has(s.id)).map(s => ({
-      ...s,
-      accessLevel: (s.id === 's1' || s.id === 's2' || s.id === 's6' || s.id === 's11' || s.id.includes('iniciante')) ? ('free' as const) : ('premium' as const)
-    }));
-    return [...catalogSessionsMapped, ...additional];
+    return catalogSessionsMapped;
   }, [catalogWorkouts]);
 
   // Carousel refs for smooth left/right scrolling across collections
@@ -225,45 +232,13 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
     setActiveSession(null);
   };
 
-  // Helpers para classificação inteligente de novas divisões musculares
+  // Helpers para classificação de divisões musculares respeitando foco primário anatômico
   const isPeitoralOmbroTriceps = (s: CollectionWorkoutSession): boolean => {
-    const pushKeywords = [
-      'peitoral', 'peito', 'ombro', 'tríceps', 'triceps', 'deltóide', 'deltoide', 
-      'empurrar', 'empurrada', 'supino', 'desenvolvimento', 'elevação lateral', 'elevação frontal', 'flexão'
-    ];
-    if (['w-sup-01', 'w-sup-03', 'w-sup-05', 'w-sup-06', 'w-sup-08', 'w-sup-09', 'w-sup-11', 'w-sup-12', 'w-40p-07'].includes(s.id)) {
-      return true;
-    }
-    const tMatch = pushKeywords.some(k => s.title.toLowerCase().includes(k));
-    const fMatch = pushKeywords.some(k => s.focus.toLowerCase().includes(k));
-    const oMatch = pushKeywords.some(k => s.objective.toLowerCase().includes(k));
-    const exMatch = s.exercises && s.exercises.some(e => {
-      const mg = (e.muscleGroup || '').toLowerCase();
-      const mp = (e.movementPattern || '').toLowerCase();
-      const nm = (e.name || '').toLowerCase();
-      return mp.includes('empurrar') || pushKeywords.some(k => mg.includes(k) || nm.includes(k));
-    });
-    return tMatch || fMatch || oMatch || !!exMatch;
+    return isPushWorkout(s);
   };
 
   const isCostasBiceps = (s: CollectionWorkoutSession): boolean => {
-    const pullKeywords = [
-      'costas', 'bíceps', 'biceps', 'dorsal', 'romboides', 'romboide', 'trapézio', 'trapezio',
-      'puxar', 'puxada', 'remada', 'tração', 'tracao', 'escapular', 'lat pulldown', 'crucifixo invertido', 'rosca'
-    ];
-    if (['w-sup-02', 'w-sup-03', 'w-sup-04', 'w-sup-05', 'w-sup-07', 'w-sup-08', 'w-sup-09', 'w-sup-10', 'w-sup-12', 'w-40p-07'].includes(s.id)) {
-      return true;
-    }
-    const tMatch = pullKeywords.some(k => s.title.toLowerCase().includes(k));
-    const fMatch = pullKeywords.some(k => s.focus.toLowerCase().includes(k));
-    const oMatch = pullKeywords.some(k => s.objective.toLowerCase().includes(k));
-    const exMatch = s.exercises && s.exercises.some(e => {
-      const mg = (e.muscleGroup || '').toLowerCase();
-      const mp = (e.movementPattern || '').toLowerCase();
-      const nm = (e.name || '').toLowerCase();
-      return mp.includes('puxar') || pullKeywords.some(k => mg.includes(k) || nm.includes(k));
-    });
-    return tMatch || fMatch || oMatch || !!exMatch;
+    return isPullWorkout(s);
   };
 
   // Stopwords comuns em português que não devem inviabilizar buscas compostas
@@ -381,23 +356,10 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
 
   /**
    * Avalia compatibilidade com o filtro de categorias selecionado
+   * Utiliza classificação primária anatômica estrita, eliminando falsos positivos e contaminação.
    */
   const matchesCategoryFilter = (s: CollectionWorkoutSession, filterId: string): boolean => {
-    if (filterId === 'todos') return true;
-    if (filterId === 'peitoral-ombro-triceps') return isPeitoralOmbroTriceps(s);
-    if (filterId === 'costas-biceps' || filterId === 'costas-trapezio-biceps' || filterId === 'costas-biceps-trapezio') return isCostasBiceps(s);
-    if (filterId === 'gratis') return s.accessLevel === 'free';
-    if (filterId === 'premium') return s.accessLevel === 'premium';
-    if (filterId === 'nivel-1') return s.levelId === 'nivel-1';
-    if (filterId === 'nivel-2') return s.levelId === 'nivel-2';
-    if (filterId === 'nivel-3') return s.levelId === 'nivel-3';
-    if (filterId === 'forca_40_plus') return s.id.startsWith('w-40p') || s.pillarId === 'forca' || (s as any).category === 'forca_40_plus';
-    if (filterId === 'superiores') return s.id.startsWith('w-sup') || s.focus.toLowerCase().includes('superior') || (s as any).category === 'superiores';
-    if (filterId === 'inferiores') return s.id.startsWith('w-inf') || s.focus.toLowerCase().includes('inferior') || (s as any).category === 'inferiores';
-    if (filterId === 'full_body') return s.id.startsWith('w-fb') || s.focus.toLowerCase().includes('full body') || (s as any).category === 'full_body';
-    if (filterId === 'cardiorespiratorio') return s.id.startsWith('w-cardio') || s.pillarId === 'condicionamento' || (s as any).category === 'cardiorespiratorio';
-    if (filterId === 'mobilidade_equilibrio') return s.id.startsWith('w-mob') || s.pillarId === 'mobilidade' || s.pillarId === 'equilibrio' || (s as any).category === 'mobilidade_equilibrio';
-    return true;
+    return matchesClassificationFilter(s, filterId);
   };
 
   // Resultados globais no catálogo completo para o termo pesquisado
@@ -1578,51 +1540,63 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Exercícios Inclusos ({selectedPreviewSession.exercises.length})
+                    Exercícios Inclusos ({selectedPreviewSession.exercises && selectedPreviewSession.exercises.length > 0 ? selectedPreviewSession.exercises.length : (selectedPreviewSession.exerciseCount || 4)})
                   </h4>
                   <span className="text-[11px] text-slate-400">Com vídeos demonstrativos</span>
                 </div>
 
                 <div className="space-y-2.5">
-                  {selectedPreviewSession.exercises.map((ex, idx) => (
-                    <div
-                      key={ex.id || idx}
-                      className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 transition"
-                    >
-                      {/* Miniatura 16:9 clicável */}
-                      <div className="w-20 shrink-0">
-                        <ExerciseThumbnail
-                          exercise={ex}
-                          onClick={() => onPreviewExercise(ex)}
-                          aspectRatio="16:9"
-                          showPlayBadge={true}
-                        />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-mono text-slate-400">#{idx + 1}</span>
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase">
-                            {ex.muscleGroup}
-                          </span>
-                        </div>
-                        <p className="text-xs sm:text-sm font-bold text-white truncate">
-                          {ex.name}
-                        </p>
-                        <p className="text-[11px] text-slate-400">
-                          {ex.sets} séries • {ex.reps} • Descanso: {ex.rest}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => onPreviewExercise(ex)}
-                        className="min-h-[44px] min-w-[44px] px-2 text-emerald-400 hover:text-white hover:bg-emerald-500/20 rounded-xl transition flex items-center justify-center shrink-0"
-                        title="Ver vídeo demonstrativo"
+                  {selectedPreviewSession.exercises && selectedPreviewSession.exercises.length > 0 ? (
+                    selectedPreviewSession.exercises.map((ex, idx) => (
+                      <div
+                        key={ex.id || idx}
+                        className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 transition"
                       >
-                        <Play className="w-4 h-4 fill-current" />
-                      </button>
+                        {/* Miniatura 16:9 clicável */}
+                        <div className="w-20 shrink-0">
+                          <ExerciseThumbnail
+                            exercise={ex}
+                            onClick={() => onPreviewExercise(ex)}
+                            aspectRatio="16:9"
+                            showPlayBadge={true}
+                          />
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-mono text-slate-400">#{idx + 1}</span>
+                            <span className="text-[10px] font-bold text-emerald-400 uppercase">
+                              {ex.muscleGroup}
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm font-bold text-white truncate">
+                            {ex.name}
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            {ex.sets} séries • {ex.reps} • Descanso: {ex.rest}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => onPreviewExercise(ex)}
+                          className="min-h-[44px] min-w-[44px] px-2 text-emerald-400 hover:text-white hover:bg-emerald-500/20 rounded-xl transition flex items-center justify-center shrink-0"
+                          title="Ver vídeo demonstrativo"
+                        >
+                          <Play className="w-4 h-4 fill-current" />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-amber-500/30 text-center space-y-2">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-bold text-xs">
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Treino Exclusivo com {selectedPreviewSession.exerciseCount || 4} Movimentos</span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                        Acesso completo liberado no plano Premium: vídeos demonstrativos em alta resolução com execução passo a passo, recomendações de cargas, número de séries e tempos de intervalo.
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
@@ -1975,7 +1949,7 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({
         {/* Movements & Touch CTA button */}
         <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between gap-1">
           <span className="text-[9px] text-slate-400 font-medium truncate">
-            {session.exercises.length} mov.
+            {session.exerciseCount || (session.exercises && session.exercises.length > 0 ? session.exercises.length : 4)} mov.
           </span>
 
           <button

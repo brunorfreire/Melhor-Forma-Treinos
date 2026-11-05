@@ -13,7 +13,9 @@ import {
 } from '../types';
 import { CENTRAL_EXERCISES } from './centralExercises';
 import { INITIAL_CATALOG_WORKOUTS, CATALOG_COLLECTIONS } from './catalogWorkouts';
+import { INITIAL_WORKOUT_EXERCISES } from './workoutExercises';
 import { FREE_WORKOUT_EXERCISES } from './freeWorkoutExercises';
+import { getWorkoutClassification, getWorkoutExerciseCount } from '../services/catalogClassificationService';
 import { getSupabaseConfigStatus, getValidSessionToken } from '../utils/supabaseClient';
 
 const WORKOUTS_STORAGE_KEY = 'mf_catalog_workouts_v3';
@@ -22,16 +24,31 @@ const RELATIONS_STORAGE_KEY = 'mf_workout_exercises_v2';
 
 /**
  * Obtém todos os treinos do catálogo (com persistência de edições do treinador)
+ * Garante enriquecimento com metadados anatômicos, foco primário e contagem real de movimentos.
  */
 export function getAllCatalogWorkouts(): CatalogWorkout[] {
-  if (typeof window === 'undefined') return [...INITIAL_CATALOG_WORKOUTS];
+  const enrich = (w: CatalogWorkout): CatalogWorkout => {
+    const meta = getWorkoutClassification(w.id);
+    return {
+      ...w,
+      exerciseCount: meta?.exerciseCount || getWorkoutExerciseCount(w.id),
+      primaryFocus: meta?.primaryFocus || w.primaryFocus,
+      movementPattern: meta?.movementPattern || w.movementPattern,
+      secondaryFocus: meta?.secondaryFocus || w.secondaryFocus || []
+    };
+  };
+
+  if (typeof window === 'undefined') {
+    return INITIAL_CATALOG_WORKOUTS.map(enrich);
+  }
+
   try {
     const saved = localStorage.getItem(WORKOUTS_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
         const initialMap = new Map(INITIAL_CATALOG_WORKOUTS.map(w => [w.id, w]));
-        return parsed.map((w: CatalogWorkout) => {
+        const workouts = parsed.map((w: CatalogWorkout) => {
           const initial = initialMap.get(w.id);
           const normalizedTitle =
             w.id === 'w-sup-05' ||
@@ -59,12 +76,13 @@ export function getAllCatalogWorkouts(): CatalogWorkout[] {
             title: normalizedTitle
           };
         });
+        return workouts.map(enrich);
       }
     }
   } catch (e) {
     console.warn('Erro ao carregar treinos salvos:', e);
   }
-  return [...INITIAL_CATALOG_WORKOUTS];
+  return INITIAL_CATALOG_WORKOUTS.map(enrich);
 }
 
 /**
@@ -111,22 +129,25 @@ export function saveAllCentralExercises(exercises: CentralExercise[]): void {
 }
 
 /**
- * Obtém as relações entre treinos e exercícios
+ * Obtém as relações entre treinos e exercícios para todos os 72 treinos do catálogo
+ * Garante que todas as 251 prescrições da biblioteca central estejam disponíveis
+ * para treinadores e usuários autorizados, sem risco de retornar relações vazias.
  */
 export function getAllWorkoutExerciseItems(): WorkoutExerciseItem[] {
-  if (typeof window === 'undefined') return [...FREE_WORKOUT_EXERCISES];
+  if (typeof window === 'undefined') return [...INITIAL_WORKOUT_EXERCISES];
   try {
     const saved = localStorage.getItem(RELATIONS_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      // Garante que o storage possua a totalidade das relações cadastradas (mínimo 251)
+      if (Array.isArray(parsed) && parsed.length >= INITIAL_WORKOUT_EXERCISES.length) {
         return parsed;
       }
     }
   } catch (e) {
     console.warn('Erro ao carregar relações treino-exercício:', e);
   }
-  return [...FREE_WORKOUT_EXERCISES];
+  return [...INITIAL_WORKOUT_EXERCISES];
 }
 
 /**

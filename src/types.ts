@@ -142,6 +142,28 @@ export interface CentralExercise {
 /**
  * 2. WORKOUTS: Biblioteca de sessões de treinamento (72 sessões)
  */
+export type PrimaryMuscleFocus = 
+  | 'peitoral-ombro-triceps' 
+  | 'costas-biceps' 
+  | 'inferiores' 
+  | 'full_body' 
+  | 'forca_40_plus' 
+  | 'cardiorespiratorio' 
+  | 'mobilidade_equilibrio' 
+  | 'bracos' 
+  | 'cintura_escapular' 
+  | 'superiores_composto';
+
+export type MovementPatternType = 
+  | 'empurrar' 
+  | 'puxar' 
+  | 'agachar' 
+  | 'dobradica' 
+  | 'composto' 
+  | 'locomocao' 
+  | 'mobilidade' 
+  | 'isolamento';
+
 export interface CatalogWorkout {
   id: string; // ID único, ex: "w-40p-01", "w-sup-04"
   title: string;
@@ -159,6 +181,10 @@ export interface CatalogWorkout {
   modelAgeGroup?: string;
   authorTrainer?: string;
   updatedAt: string;
+  exerciseCount?: number;
+  primaryFocus?: PrimaryMuscleFocus;
+  movementPattern?: MovementPatternType;
+  secondaryFocus?: string[];
 }
 
 /**

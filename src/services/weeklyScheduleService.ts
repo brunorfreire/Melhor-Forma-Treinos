@@ -8,6 +8,7 @@ import {
   WeeklyPlanOrigin
 } from '../types';
 import { getAllCatalogWorkouts, getHydratedWorkout } from '../data/workoutCatalogService';
+import { matchesClassificationFilter, getWorkoutExerciseCount } from './catalogClassificationService';
 import { getStoredSession } from '../utils/supabaseClient';
 
 const PERSONAL_SCHEDULE_STORAGE_PREFIX = 'mf_student_weekly_schedules_v1';
@@ -232,52 +233,11 @@ export function doesWorkoutMatchFocus(workout: CatalogWorkout, plannedFocus?: st
   if (!plannedFocus || plannedFocus === 'livre' || plannedFocus === 'todos') {
     return true;
   }
-
-  if (workout.category === plannedFocus) {
-    return true;
-  }
-
-  const titleLower = (workout.title || '').toLowerCase();
-  const objLower = (workout.objective || '').toLowerCase();
-  const descLower = (workout.description || '').toLowerCase();
-  const combined = `${titleLower} ${objLower} ${descLower}`;
-
-  if (plannedFocus === 'peitoral-ombro-triceps') {
-    const pushIds = ['w-sup-01', 'w-sup-03', 'w-sup-05', 'w-sup-06', 'w-sup-08', 'w-sup-09', 'w-sup-11', 'w-sup-12', 'w-40p-07'];
-    if (pushIds.includes(workout.id)) return true;
-    return ['peitoral', 'peito', 'ombro', 'tríceps', 'triceps', 'empurrar', 'supino'].some(k => combined.includes(k));
-  }
-
-  if (plannedFocus === 'costas-biceps') {
-    const pullIds = ['w-sup-02', 'w-sup-03', 'w-sup-04', 'w-sup-05', 'w-sup-07', 'w-sup-08', 'w-sup-09', 'w-sup-10', 'w-sup-12', 'w-40p-07'];
-    if (pullIds.includes(workout.id)) return true;
-    return ['costas', 'bíceps', 'biceps', 'dorsal', 'puxar', 'puxada', 'remada', 'trapézio'].some(k => combined.includes(k));
-  }
-
-  if (plannedFocus === 'superiores') {
-    if (workout.category === 'peitoral-ombro-triceps' || workout.category === 'costas-biceps' || workout.category === 'costas-trapezio-biceps') {
-      return true;
-    }
-    return ['superior', 'peitoral', 'costas', 'ombro', 'braço', 'puxar', 'empurrar'].some(k => combined.includes(k));
-  }
-
-  if (plannedFocus === 'inferiores') {
-    return ['inferior', 'perna', 'glúteo', 'gluteo', 'agachamento', 'quadril', 'joelho', 'coxa'].some(k => combined.includes(k));
-  }
-
-  if (plannedFocus === 'mobilidade_equilibrio') {
-    return ['mobilidade', 'equilíbrio', 'equilibrio', 'alongamento', 'coluna', 'postura', 'estabilidade'].some(k => combined.includes(k));
-  }
-
-  if (plannedFocus === 'forca_40_plus') {
-    return workout.category === 'forca_40_plus' || workout.category === 'full_body';
-  }
-
-  return false;
+  return matchesClassificationFilter(workout, plannedFocus);
 }
 
 /**
- * Obtém metadados complementares do treino (como quantidade de exercícios quando disponível)
+ * Obtém metadados complementares do treino (com quantidade real de exercícios garantida)
  */
 export function getWorkoutSummaryDetails(workoutId?: string): {
   workout: CatalogWorkout | null;
@@ -293,8 +253,7 @@ export function getWorkoutSummaryDetails(workoutId?: string): {
     return { workout: null, exerciseCount: 0, durationLabel: '' };
   }
 
-  const hydrated = getHydratedWorkout(workout.id, { allowPremium: true });
-  const exerciseCount = hydrated?.exercises?.length || 0;
+  const exerciseCount = workout.exerciseCount || getWorkoutExerciseCount(workout.id);
 
   return {
     workout,

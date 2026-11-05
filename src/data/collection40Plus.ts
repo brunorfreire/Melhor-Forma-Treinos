@@ -1,4 +1,4 @@
-import { WorkoutPlan, WorkoutSession, Exercise } from '../types';
+import { WorkoutPlan, WorkoutSession, Exercise, PrimaryMuscleFocus, MovementPatternType } from '../types';
 
 export interface CollectionPillar {
   id: 'forca' | 'equilibrio' | 'mobilidade' | 'condicionamento';
@@ -35,6 +35,13 @@ export interface CollectionWorkoutSession {
   exercises: Exercise[];
   accessLevel?: 'free' | 'premium';
   photoAlt?: string;
+  exerciseCount?: number;
+  primaryFocus?: PrimaryMuscleFocus;
+  movementPattern?: MovementPatternType;
+  secondaryFocus?: string[];
+  category?: string;
+  equipments?: string[];
+  description?: string;
 }
 
 export const PILLARS_40_PLUS: CollectionPillar[] = [
