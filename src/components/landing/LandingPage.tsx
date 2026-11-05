@@ -31,11 +31,13 @@ import { HeroFitnessMosaic } from './HeroFitnessMosaic';
 interface LandingPageProps {
   onNavigate: (route: string) => void;
   isAuthenticated?: boolean;
+  onExperimentMyWeek?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ 
   onNavigate,
-  isAuthenticated = false 
+  isAuthenticated = false,
+  onExperimentMyWeek
 }) => {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
@@ -190,6 +192,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <p className="text-xs sm:text-sm text-emerald-300 font-semibold tracking-wide">
               Crie sua conta e tenha acesso a 12 treinos gratuitos.
             </p>
+
+            {/* Demonstração Interativa "Experimentar Minha Semana" acessível no Preview */}
+            {onExperimentMyWeek && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={onExperimentMyWeek}
+                  data-testid="landing-experiment-my-week-btn"
+                  className="w-full min-h-[48px] py-3 px-6 bg-slate-900/90 hover:bg-slate-800 border border-amber-500/40 text-amber-300 hover:text-white text-xs sm:text-sm font-black rounded-2xl transition flex items-center justify-center gap-2 shadow-xl backdrop-blur-md active:scale-95 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Experimentar Minha Semana</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Pilares de Confiança e Acessibilidade */}

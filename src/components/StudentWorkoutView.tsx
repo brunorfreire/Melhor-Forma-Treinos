@@ -37,6 +37,7 @@ import {
   validateSessionExecutionBlocks
 } from '../utils/guidedExecutionEngine';
 import { DEMO_GUIDED_WORKOUT_PLAN } from '../data/guidedDemoPlan';
+import { markScheduledWorkoutCompleted } from '../services/weeklyScheduleService';
 
 interface StudentWorkoutViewProps {
   plan: WorkoutPlan;
@@ -46,6 +47,7 @@ interface StudentWorkoutViewProps {
   onBackToCatalog?: () => void;
   onOpenTodayRecommender?: () => void;
   onOpenEvolution?: () => void;
+  onOpenMyWeek?: () => void;
   onGuidedModeChange?: (isGuided: boolean) => void;
 }
 
@@ -75,11 +77,13 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   onBackToCatalog,
   onOpenTodayRecommender,
   onOpenEvolution,
+  onOpenMyWeek,
   onGuidedModeChange
 }) => {
-  // Inicia em modo demonstração apenas quando a ficha é explicitamente de demonstração (isDemoSession: true).
-  // Assim, as divisões reais da ficha do aluno ou do catálogo (ex.: "Puxar e Empurrar") aparecem diretamente.
-  const [isDemoModeActive, setIsDemoModeActive] = useState<boolean>(() => !!plan.isDemoSession);
+  // Inicia em modo demonstração da ficha guiada apenas quando isDemoSession é true e não veio de Minha Semana
+  const [isDemoModeActive, setIsDemoModeActive] = useState<boolean>(
+    () => !!plan.isDemoSession && !plan.isDemoWeekSession
+  );
 
   // Modo de visualização: inicia em 'guided' (Execução Guiada) para apresentar o 1º exercício com "Começar Série 1",
   // permitindo alternar livremente para 'overview' (Visão Geral) sem perder progresso.
@@ -120,9 +124,9 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
 
   // Sincroniza quando o usuário seleciona uma nova ficha no catálogo
   useEffect(() => {
-    setIsDemoModeActive(!!plan.isDemoSession);
+    setIsDemoModeActive(!!plan.isDemoSession && !plan.isDemoWeekSession);
     setRealSessionIndex(0);
-  }, [plan.id, plan.isDemoSession]);
+  }, [plan.id, plan.isDemoSession, plan.isDemoWeekSession]);
 
   // Rolagem automática após clique explícito no card de divisão (respeita prefers-reduced-motion e não dispara no carregamento inicial)
   useEffect(() => {
@@ -221,7 +225,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
   };
 
   const persistRealActiveSessionProgress = (updatedExerciseMap: Record<string, boolean>) => {
-    if (isDemoModeActive || effectivePlan.isDemoSession) return;
+    if (isDemoModeActive || effectivePlan.isDemoSession || effectivePlan.isDemoWeekSession) return;
     const completedList = Object.keys(updatedExerciseMap).filter((k) => updatedExerciseMap[k]);
     saveActiveWorkoutSession({
       workoutId: effectivePlan.id,
@@ -277,11 +281,13 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
     );
     const goalsList = effectivePlan.goal ? [effectivePlan.goal] : ['Força e Autonomia 40+'];
     const estimatedMinutes = Math.max(15, Math.min(50, (completedCount || totalExercises) * 3));
+    const isAnyDemo =
+      isDemoModeActive || !!effectivePlan.isDemoSession || !!effectivePlan.isDemoWeekSession;
 
     // IMPORTANTE: Sessão de demonstração nunca grava no histórico real nem apaga sessão ativa real
-    if (!isDemoModeActive && !effectivePlan.isDemoSession) {
-      recordCompletedWorkout(
-        effectivePlan.id,
+    if (!isAnyDemo) {
+      const wasRecorded = recordCompletedWorkout(
+        effectivePlan.catalogWorkoutId || effectivePlan.id,
         activeSession.name,
         'forca_40_plus',
         estimatedMinutes,
@@ -291,19 +297,35 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
         undefined,
         'app_session'
       );
+
+      // Atualiza o status na Minha Semana para 'realizado' SOMENTE após confirmação de gravação real
+      if (wasRecorded) {
+        markScheduledWorkoutCompleted({
+          workoutId: effectivePlan.catalogWorkoutId || effectivePlan.id,
+          scheduledDateISO: effectivePlan.scheduledDateISO,
+          isDemo: false
+        });
+      }
       clearActiveWorkoutSession();
+    } else if (effectivePlan.isDemoWeekSession) {
+      // Na demonstração isolada de Minha Semana, atualiza apenas o estado isolado de demonstração
+      markScheduledWorkoutCompleted({
+        workoutId: effectivePlan.catalogWorkoutId || effectivePlan.id,
+        scheduledDateISO: effectivePlan.scheduledDateISO,
+        isDemo: true
+      });
     }
 
     setLastRecordedSummary({
       title: activeSession.name,
       muscles: uniqueMuscles,
       duration: estimatedMinutes,
-      isDemo: isDemoModeActive || !!effectivePlan.isDemoSession
+      isDemo: isAnyDemo
     });
     setShowFinishedModal(true);
     setTimeout(() => setIsCompleting(false), 2000);
 
-    if (notifyWhatsApp && !isDemoModeActive && !effectivePlan.isDemoSession) {
+    if (notifyWhatsApp && !isAnyDemo) {
       const text = formatStudentFinishedMessage(effectivePlan, activeSession);
       const url = createWhatsAppShareLink(effectivePlan.trainerPhone || '', text);
       window.open(url, '_blank');
@@ -920,9 +942,10 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
         )}
       </div>
 
-      {/* Floating Bottom Bar with Share & Finish */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-3">
-        <div className="max-w-md mx-auto flex items-center gap-2">
+      {/* Floating Bottom Bar with Share & Finish (Visível no modo Visão Geral) */}
+      {workoutViewMode === 'overview' && (
+        <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] md:bottom-0 left-0 right-0 z-20 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-3">
+          <div className="max-w-md mx-auto flex items-center gap-2">
           <button
             onClick={onOpenShareModal}
             className="min-h-[46px] flex-1 py-3 px-4 bg-slate-900 hover:bg-slate-850 border border-slate-700/80 active:scale-98 text-slate-200 font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition"
@@ -941,6 +964,7 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       {/* Modal de Celebração & Conclusão de Treino */}
       {showFinishedModal && lastRecordedSummary && (
@@ -991,13 +1015,26 @@ export const StudentWorkoutView: React.FC<StudentWorkoutViewProps> = ({
             </div>
 
             <div className="space-y-2 pt-1">
+              {onOpenMyWeek && (
+                <button
+                  onClick={() => {
+                    setShowFinishedModal(false);
+                    onOpenMyWeek();
+                  }}
+                  className="w-full min-h-[44px] py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-md shadow-emerald-950"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Voltar para Minha Semana</span>
+                </button>
+              )}
+
               {onOpenEvolution && !lastRecordedSummary.isDemo && (
                 <button
                   onClick={() => {
                     setShowFinishedModal(false);
                     onOpenEvolution();
                   }}
-                  className="w-full min-h-[44px] py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-md shadow-emerald-950"
+                  className="w-full min-h-[44px] py-2.5 px-4 bg-teal-600/30 hover:bg-teal-600 text-teal-200 hover:text-white border border-teal-500/40 font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition"
                 >
                   <Trophy className="w-4 h-4" />
                   <span>Ver Minha Evolução</span>

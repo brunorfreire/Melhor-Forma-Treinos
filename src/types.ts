@@ -59,9 +59,12 @@ export interface WorkoutPlan {
   createdAt: string;
   updatedAt?: string;
   isDemoSession?: boolean;
+  catalogWorkoutId?: string;
+  scheduledDateISO?: string;
+  isDemoWeekSession?: boolean;
 }
 
-export type ViewMode = 'home' | 'collection' | 'student' | 'evolution' | 'editor';
+export type ViewMode = 'home' | 'my_week' | 'collection' | 'student' | 'evolution' | 'editor';
 
 export interface SavedStudentWorkout {
   id: string;
@@ -326,3 +329,48 @@ export interface RecommendedWorkoutMatch {
   isFresh?: boolean;
 }
 
+/* ========================================================================= */
+/* MINHA SEMANA DE TREINOS (PLANEJAMENTO PESSOAL E DO TREINADOR)             */
+/* ========================================================================= */
+
+export type DayScheduleType = 'workout' | 'rest' | 'active_recovery';
+
+export type DayWorkoutStatus = 'planned' | 'completed' | 'missed';
+
+export type WeeklyPlanOrigin = 'personal' | 'trainer';
+
+export interface PlannedFocusOption {
+  id: string;
+  label: string;
+  shortLabel: string;
+  category?: WorkoutCollectionCategory;
+  description: string;
+}
+
+export interface DayScheduleItem {
+  dateISO: string; // YYYY-MM-DD
+  dayOfWeek: number; // 1 = Segunda ... 7 = Domingo
+  dayType: DayScheduleType;
+  plannedFocus?: string; // ex: 'superiores', 'inferiores', 'forca_40_plus', 'mobilidade_equilibrio', etc.
+  plannedFocusLabel?: string; // Rótulo amigável do foco/objetivo planejado
+  workoutId?: string; // ID de CatalogWorkout associado, quando escolhido
+  status: DayWorkoutStatus; // 'planned' | 'completed' | 'missed'
+  completedAt?: string;
+  completedRecordId?: string;
+  origin: WeeklyPlanOrigin;
+  trainerName?: string;
+  trainerNotes?: string;
+  customizedFromTrainer?: boolean;
+}
+
+export interface StudentWeeklySchedule {
+  id: string;
+  weekStartISO: string; // Segunda-feira (YYYY-MM-DD)
+  origin: WeeklyPlanOrigin;
+  trainerName?: string;
+  days: Record<string, DayScheduleItem>; // chave = dateISO (YYYY-MM-DD)
+  configuredWeekdays: number[]; // dias da semana selecionados pelo aluno para treinar (1..7)
+  isDemo?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

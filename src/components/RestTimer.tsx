@@ -149,7 +149,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({ hidden = false }) => {
   }
 
   return (
-    <div className="fixed bottom-20 right-3 left-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-80 z-30 transition-all duration-300">
+    <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:bottom-6 right-3 left-3 sm:left-auto sm:right-6 sm:w-80 z-30 transition-all duration-300">
       <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl shadow-2xl shadow-black/70 overflow-hidden transition-all">
         {/* Minimized Compact Bar */}
         {isMinimized ? (

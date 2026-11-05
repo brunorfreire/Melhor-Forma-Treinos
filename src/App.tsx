@@ -21,6 +21,8 @@ import { StudentEvolutionView } from './components/StudentEvolutionView';
 import { getAllCatalogWorkouts } from './data/workoutCatalogService';
 import { GlobalAuthGate } from './components/auth/GlobalAuthGate';
 import { LandingPage } from './components/landing/LandingPage';
+import { MyWeekView } from './components/week/MyWeekView';
+import { MobileBottomNav } from './components/navigation/MobileBottomNav';
 import { validateCurrentSession, logoutUser, AuthSession } from './utils/supabaseClient';
 import { 
   Play, 
@@ -37,7 +39,8 @@ import {
   LogOut,
   User,
   ShieldAlert,
-  ArrowLeft
+  ArrowLeft,
+  Calendar
 } from 'lucide-react';
 
 const STORAGE_KEY = 'mf_treino_v1_lite_plan';
@@ -69,6 +72,10 @@ export default function App() {
   const [isTodayModalOpen, setIsTodayModalOpen] = useState(false);
   const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null);
   const [isGuidedExecutionMode, setIsGuidedExecutionMode] = useState(false);
+  const [myWeekTargetDate, setMyWeekTargetDate] = useState<string | undefined>(undefined);
+  const [myWeekDemoMode, setMyWeekDemoMode] = useState<boolean>(false);
+  const [publicDemoMode, setPublicDemoMode] = useState<'none' | 'my_week' | 'guided'>('none');
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
 
   // Referência para o item de navegação ativo com scrollIntoView automático seguro
   const activeNavRef = useRef<HTMLButtonElement | null>(null);
@@ -313,6 +320,93 @@ export default function App() {
   }
 
   // =========================================================================
+  // MODO DEMONSTRAÇÃO INTERATIVA PÚBLICA (Experimentar Minha Semana no Preview)
+  // =========================================================================
+  if (!session && publicDemoMode !== 'none') {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-start">
+        <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-emerald-500/30 px-3 sm:px-6 pt-[max(0.5rem,env(safe-area-inset-top,0.5rem))] pb-2.5 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <MelhorFormaLogo size={32} className="shrink-0" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-black text-white truncate">
+                    Melhor Forma Play 40+
+                  </span>
+                  <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-md shrink-0">
+                    Experimentar Minha Semana
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 truncate hidden sm:block">
+                  Demonstração interativa isolada • Teste o calendário semanal, troca de treinos e Execução Guiada
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {publicDemoMode === 'guided' && (
+                <button
+                  type="button"
+                  onClick={() => setPublicDemoMode('my_week')}
+                  className="min-h-[44px] px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Calendar className="w-3.5 h-3.5 shrink-0" />
+                  <span>Minha Semana</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPublicDemoMode('none')}
+                className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
+                <span>Sair da Demo</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {publicDemoMode === 'my_week' ? (
+          <MyWeekView
+            initialDateISO={myWeekTargetDate}
+            initialDemoMode={true}
+            userStatus="free"
+            userRole="student"
+            onStartScheduledWorkout={(scheduledPlan) => {
+              setPlan(scheduledPlan);
+              setPublicDemoMode('guided');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onPreviewExercise={(ex) => setPreviewExercise(ex)}
+            onBackToHome={() => setPublicDemoMode('none')}
+          />
+        ) : (
+          <>
+            <StudentWorkoutView
+              plan={plan}
+              onEditPlan={() => {}}
+              onOpenShareModal={() => setIsShareModalOpen(true)}
+              onPreviewExercise={(ex) => setPreviewExercise(ex)}
+              onBackToCatalog={() => setPublicDemoMode('my_week')}
+              onOpenMyWeek={() => setPublicDemoMode('my_week')}
+              onGuidedModeChange={setIsGuidedExecutionMode}
+            />
+            <RestTimer hidden={isGuidedExecutionMode} />
+          </>
+        )}
+
+        {previewExercise && (
+          <MuscleWikiModal
+            exercise={previewExercise}
+            onClose={() => setPreviewExercise(null)}
+          />
+        )}
+      </main>
+    );
+  }
+
+  // =========================================================================
   // ROTA 1: LANDING PAGE PÚBLICA COMERCIAL (/)
   // =========================================================================
   if (currentRoute === '/') {
@@ -320,6 +414,16 @@ export default function App() {
       <LandingPage
         onNavigate={navigate}
         isAuthenticated={Boolean(session)}
+        onExperimentMyWeek={() => {
+          if (session) {
+            setMyWeekDemoMode(true);
+            setViewMode('my_week');
+            navigate('/app');
+          } else {
+            setPublicDemoMode('my_week');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }}
       />
     );
   }
@@ -378,7 +482,7 @@ export default function App() {
   const isPremium = user.subscription_status === 'active' || isPrivileged;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-start">
+    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-start pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:pb-0">
       {/* ========================================================================= */}
       {/* GLOBAL STREAMING NAVIGATION BAR (Melhor Forma Play) */}
       {/* ========================================================================= */}
@@ -419,7 +523,7 @@ export default function App() {
               <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2 sm:px-2.5 py-1 rounded-xl text-xs">
                 <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="font-bold text-white text-[11px] truncate max-w-[55px] min-[360px]:max-w-[75px] min-[390px]:max-w-[95px] sm:max-w-[120px]">
-                  {user.nome.split(' ')[0]}
+                  {(user?.nome || 'Aluno').split(' ')[0]}
                 </span>
                 {user.role === 'admin' ? (
                   <span className="text-[9px] font-mono font-bold bg-purple-500/25 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/35">
@@ -457,8 +561,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Navigation Tabs: Accessible Horizontal Scroller with smooth pan and touch */}
-          <div className="w-full sm:w-auto min-w-0 max-w-full pt-1 sm:pt-0 border-t border-slate-900 sm:border-0">
+          {/* Navigation Tabs Desktop (md+): Accessible Horizontal Scroller with smooth pan and touch */}
+          <div className="hidden md:block w-auto min-w-0 max-w-full">
             <HorizontalScroller
               ariaLabel="Navegação de seções"
               innerClassName="gap-1 sm:gap-1.5 text-xs font-bold py-0.5 md:flex-wrap"
@@ -476,6 +580,24 @@ export default function App() {
                 <Film className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="hidden sm:inline">Catálogo Play</span>
                 <span className="sm:hidden text-xs">Início</span>
+              </button>
+
+              <button
+                ref={viewMode === 'my_week' ? activeNavRef : undefined}
+                type="button"
+                onClick={() => {
+                  setMyWeekDemoMode(false);
+                  setViewMode('my_week');
+                }}
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 sm:px-3.5 py-2 transition whitespace-nowrap active:scale-95 ${
+                  viewMode === 'my_week'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950 font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent'
+                }`}
+                title="Organizar minha semana de treinos e iniciar a Execução Guiada"
+              >
+                <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Minha Semana</span>
               </button>
 
               <button
@@ -577,6 +699,32 @@ export default function App() {
             setIsShareModalOpen(true);
           }}
           onOpenEvolution={() => setViewMode('evolution')}
+          onOpenMyWeek={(dateISO, demo) => {
+            setMyWeekTargetDate(dateISO);
+            setMyWeekDemoMode(Boolean(demo));
+            setViewMode('my_week');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+
+      {viewMode === 'my_week' && (
+        <MyWeekView
+          initialDateISO={myWeekTargetDate}
+          initialDemoMode={myWeekDemoMode}
+          userStatus={user?.subscription_status || 'free'}
+          userRole={user?.role || 'student'}
+          session={session || undefined}
+          onStartScheduledWorkout={(scheduledPlan) => {
+            setPlan(scheduledPlan);
+            if (!scheduledPlan.isDemoWeekSession) {
+              saveStudentWorkout(scheduledPlan);
+            }
+            setViewMode('student');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onPreviewExercise={(ex) => setPreviewExercise(ex)}
+          onBackToHome={() => setViewMode('home')}
         />
       )}
 
@@ -604,6 +752,7 @@ export default function App() {
             onBackToCatalog={() => setViewMode('home')}
             onOpenTodayRecommender={() => setIsTodayModalOpen(true)}
             onOpenEvolution={() => setViewMode('evolution')}
+            onOpenMyWeek={() => setViewMode('my_week')}
             onGuidedModeChange={setIsGuidedExecutionMode}
           />
           <RestTimer hidden={isGuidedExecutionMode} />
@@ -695,6 +844,29 @@ export default function App() {
           onClose={() => setIsTodayModalOpen(false)}
           workouts={getAllCatalogWorkouts()}
           onStartSession={handleSelectSessionToTrain}
+        />
+      )}
+      {/* Barra de Navegação Inferior Fixa Mobile (< 768px) com 5 Opções: Início, Semana, Treinos, Hoje, Mais */}
+      {/* Oculta temporariamente apenas durante a Execução Guiada focada para garantir que nenhum controle seja coberto */}
+      {!isGuidedExecutionMode && (
+        <MobileBottomNav
+          currentViewMode={viewMode}
+          onSelectViewMode={(mode) => {
+            if (mode === 'my_week') {
+              setMyWeekDemoMode(false);
+            }
+            setViewMode(mode);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenTodayModal={() => setIsTodayModalOpen(true)}
+          isTodayModalOpen={isTodayModalOpen}
+          isPrivilegedUser={isPrivileged}
+          isMoreMenuOpen={isMoreMenuOpen}
+          onToggleMoreMenu={() => setIsMoreMenuOpen(prev => !prev)}
+          onCloseMoreMenu={() => setIsMoreMenuOpen(false)}
+          userRole={user.role}
+          userName={user.nome}
+          isPremium={isPremium}
         />
       )}
     </main>

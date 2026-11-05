@@ -429,6 +429,7 @@ export function convertCatalogWorkoutToWorkoutPlan(
 
   return {
     id: `plan-${workout.id}-${Date.now()}`,
+    catalogWorkoutId: workout.id,
     studentName: 'Aluno(a) Melhor Forma',
     trainerName: workout.authorTrainer || 'Bruno Freire',
     goal: `${workout.title} (${workout.level})`,
