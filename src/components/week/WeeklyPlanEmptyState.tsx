@@ -18,6 +18,7 @@ interface WeeklyPlanEmptyStateProps {
     focusByWeekday: Record<number, string>;
   }) => void;
   onActivateDemo: () => void;
+  onOpenWizard?: () => void;
 }
 
 const WEEKDAYS_LIST = [
@@ -32,7 +33,8 @@ const WEEKDAYS_LIST = [
 
 export const WeeklyPlanEmptyState: React.FC<WeeklyPlanEmptyStateProps> = ({
   onCreateSchedule,
-  onActivateDemo
+  onActivateDemo,
+  onOpenWizard
 }) => {
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [workoutDays, setWorkoutDays] = useState<number[]>([]);
@@ -47,10 +49,10 @@ export const WeeklyPlanEmptyState: React.FC<WeeklyPlanEmptyStateProps> = ({
       setWorkoutDays(prev => prev.filter(d => d !== dayOfWeek));
       setRecoveryDays(prev => [...prev, dayOfWeek]);
     } else if (recoveryDays.includes(dayOfWeek)) {
-      // Alterna de Recuperação Ativa -> Descanso
+      // Alterna de Recuperação Ativa -> Sem treino programado (descanso)
       setRecoveryDays(prev => prev.filter(d => d !== dayOfWeek));
     } else {
-      // Alterna de Descanso -> Treino
+      // Alterna de Sem treino programado -> Treino
       setWorkoutDays(prev => [...prev, dayOfWeek].sort((a, b) => a - b));
     }
   };
@@ -64,6 +66,14 @@ export const WeeklyPlanEmptyState: React.FC<WeeklyPlanEmptyStateProps> = ({
       setWorkoutDays(prev => [...prev, dayOfWeek].sort((a, b) => a - b));
     } else if (mode === 'recovery') {
       setRecoveryDays(prev => [...prev, dayOfWeek].sort((a, b) => a - b));
+    }
+  };
+
+  const handleStartPlanning = () => {
+    if (onOpenWizard) {
+      onOpenWizard();
+    } else {
+      setIsConfiguring(true);
     }
   };
 
@@ -91,13 +101,13 @@ export const WeeklyPlanEmptyState: React.FC<WeeklyPlanEmptyStateProps> = ({
         </div>
         <div className="space-y-1.5">
           <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-            <Sparkles className="w-3 h-3" /> Planejamento Pessoal 40+
+            <Sparkles className="w-3.5 h-3.5" /> Planejamento Pessoal 40+
           </span>
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             Vamos organizar sua semana?
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-            Escolha os dias em que pretende treinar e organize seus treinos em um só lugar.
+            Escolha os dias em que pretende treinar com nosso assistente em 3 passos e organize seus treinos em um só lugar.
           </p>
         </div>
       </div>
@@ -107,18 +117,27 @@ export const WeeklyPlanEmptyState: React.FC<WeeklyPlanEmptyStateProps> = ({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
               type="button"
-              onClick={() => setIsConfiguring(true)}
+              onClick={handleStartPlanning}
               data-testid="start-plan-my-week-btn"
               className="min-h-[48px] px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-950/60 transition active:scale-98"
             >
               <Calendar className="w-4 h-4 text-slate-950 shrink-0" />
-              <span>Planejar minha semana</span>
+              <span>Planejar minha semana em 3 passos</span>
               <ArrowRight className="w-4 h-4 text-slate-950 shrink-0" />
             </button>
 
             <p className="text-[11px] sm:text-xs text-slate-400 leading-snug">
-              Você escolhe seus dias disponíveis e depois associa os treinos do catálogo que preferir.
+              1. Quantos dias? → 2. Quais dias? → 3. Confirmar minha semana.
             </p>
+          </div>
+
+          {/* Dica educativa sobre Recuperação Ativa */}
+          <div className="p-3.5 rounded-2xl bg-cyan-950/30 border border-cyan-500/25 text-cyan-200 text-xs flex items-start gap-2.5">
+            <HeartPulse className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5 leading-relaxed">
+              <span className="font-bold text-white block">Recuperação ativa:</span>
+              <span>Atividade leve, como caminhada ou mobilidade, respeitando seu ritmo e sem sobrecarga articular.</span>
+            </div>
           </div>
 
           {/* Seção Secundária: Modo de Demonstração (Apresentação e Testes) */}
@@ -161,7 +180,7 @@ export const WeeklyPlanEmptyState: React.FC<WeeklyPlanEmptyStateProps> = ({
                 1. Toque nos dias da semana para definir sua disponibilidade:
               </h3>
               <span className="text-[11px] text-slate-400">
-                Toque para alternar: Treino → Recuperação ativa → Descanso
+                Toque para alternar: Treino → Recuperação ativa → Sem treino programado
               </span>
             </div>
 
@@ -200,7 +219,7 @@ export const WeeklyPlanEmptyState: React.FC<WeeklyPlanEmptyStateProps> = ({
                     </div>
 
                     <span className="text-[9px] sm:text-[10px] font-bold leading-tight text-center">
-                      {isWorkout ? 'Treino' : isRecovery ? 'Recup.' : 'Livre'}
+                      {isWorkout ? 'Treino' : isRecovery ? 'Recup.' : 'Sem treino'}
                     </span>
                   </button>
                 );

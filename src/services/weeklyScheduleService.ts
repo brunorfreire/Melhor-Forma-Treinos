@@ -15,6 +15,7 @@ const PERSONAL_SCHEDULE_STORAGE_PREFIX = 'mf_student_weekly_schedules_v1';
 const DEMO_SCHEDULE_SESSION_KEY = 'mf_demo_weekly_schedule_v1';
 
 let inMemoryDemoSchedules: Record<string, StudentWeeklySchedule> = {};
+let inMemoryPersonalSchedules: Record<string, StudentWeeklySchedule> = {};
 
 export const PLANNED_FOCUS_OPTIONS: PlannedFocusOption[] = [
   {
@@ -288,11 +289,11 @@ function getPersonalStorageKey(): string {
 }
 
 function loadPersonalSchedulesMap(): Record<string, StudentWeeklySchedule> {
-  if (typeof window === 'undefined') return {};
+  if (typeof window === 'undefined') return inMemoryPersonalSchedules;
   try {
     const key = getPersonalStorageKey();
     const raw = localStorage.getItem(key);
-    if (!raw) return {};
+    if (!raw) return inMemoryPersonalSchedules;
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === 'object') {
       return parsed;
@@ -300,10 +301,11 @@ function loadPersonalSchedulesMap(): Record<string, StudentWeeklySchedule> {
   } catch (e) {
     console.warn('Erro ao ler planejamento semanal:', e);
   }
-  return {};
+  return inMemoryPersonalSchedules;
 }
 
 function savePersonalSchedulesMap(map: Record<string, StudentWeeklySchedule>): void {
+  inMemoryPersonalSchedules = map;
   if (typeof window === 'undefined') return;
   try {
     const key = getPersonalStorageKey();

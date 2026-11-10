@@ -44,6 +44,7 @@ import {
   getHydratedWorkout
 } from '../../data/workoutCatalogService';
 import { WeeklyPlanEmptyState } from './WeeklyPlanEmptyState';
+import { ThreeStepWeekWizard } from './ThreeStepWeekWizard';
 import { WeeklyCalendar } from './WeeklyCalendar';
 import { DayWorkoutCard } from './DayWorkoutCard';
 import { WorkoutPicker } from './WorkoutPicker';
@@ -97,6 +98,7 @@ export const MyWeekView: React.FC<MyWeekViewProps> = ({
   );
 
   const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
+  const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
   const [detailsModalWorkout, setDetailsModalWorkout] = useState<CatalogWorkout | null>(null);
   const [premiumModalWorkout, setPremiumModalWorkout] = useState<CatalogWorkout | null>(null);
   const [feedbackToast, setFeedbackToast] = useState<string>('');
@@ -391,23 +393,35 @@ export const MyWeekView: React.FC<MyWeekViewProps> = ({
             {/* Indicador de sessões planejadas e concluídas */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
               {schedule && (
-                <div
-                  data-testid="my-week-sessions-indicator"
-                  className="bg-slate-950/90 border border-slate-800 rounded-2xl px-4 py-2.5 flex items-center gap-3"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs sm:text-sm font-black text-white">
-                      {metrics.completedCount} de {metrics.plannedCount}{' '}
-                      {metrics.plannedCount === 1 ? 'sessão concluída' : 'sessões concluídas'}
+                <>
+                  <div
+                    data-testid="my-week-sessions-indicator"
+                    className="bg-slate-950/90 border border-slate-800 rounded-2xl px-4 py-2.5 flex items-center gap-3"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                      <CheckCircle2 className="w-5 h-5" />
                     </div>
-                    <div className="text-[11px] text-slate-400 font-medium">
-                      {metrics.plannedCount} treinos planejados nesta semana
+                    <div>
+                      <div className="text-xs sm:text-sm font-black text-white">
+                        {metrics.completedCount} de {metrics.plannedCount}{' '}
+                        {metrics.plannedCount === 1 ? 'sessão concluída' : 'sessões concluídas'}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-medium">
+                        {metrics.plannedCount} treinos planejados nesta semana
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsWizardOpen(true)}
+                    data-testid="open-wizard-header-btn"
+                    className="min-h-[44px] px-3.5 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Organizar em 3 passos</span>
+                  </button>
+                </>
               )}
 
               {isDemoMode && (
@@ -503,6 +517,7 @@ export const MyWeekView: React.FC<MyWeekViewProps> = ({
           <WeeklyPlanEmptyState
             onCreateSchedule={handleCreatePersonalSchedule}
             onActivateDemo={handleActivateDemo}
+            onOpenWizard={() => setIsWizardOpen(true)}
           />
         ) : (
           <div className="space-y-5">
@@ -749,6 +764,18 @@ export const MyWeekView: React.FC<MyWeekViewProps> = ({
           onClose={() => setPremiumModalWorkout(null)}
         />
       )}
+
+      {/* Assistente Minha Semana em 3 Passos */}
+      <ThreeStepWeekWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        weekStartISO={weekStartISO}
+        onScheduleCreated={(newSchedule) => {
+          setSchedule(newSchedule);
+          showToast('Sua disponibilidade semanal foi organizada com sucesso!');
+        }}
+        isDemoMode={isDemoMode}
+      />
     </div>
   );
 };
