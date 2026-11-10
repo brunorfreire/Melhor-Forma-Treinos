@@ -29,8 +29,8 @@ export default defineConfig(() => {
           theme_color: '#0A182F',
           background_color: '#0A182F',
           display: 'standalone',
-          start_url: './?source=pwa',
-          scope: './',
+          start_url: '/app?source=pwa',
+          scope: '/',
           icons: [
             {
               src: './favicon-32x32.png',
@@ -63,7 +63,7 @@ export default defineConfig(() => {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         },
         devOptions: {
-          enabled: false,
+          enabled: true,
         },
       }),
       {

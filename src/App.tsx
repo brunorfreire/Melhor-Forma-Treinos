@@ -26,6 +26,7 @@ import { MobileBottomNav } from './components/navigation/MobileBottomNav';
 import { AccessibilityTextSizeToggle } from './components/accessibility/AccessibilityTextSizeToggle';
 import { MFAssistFloatingWidget } from './components/support/MFAssistFloatingWidget';
 import { PremiumModal } from './components/PremiumModal';
+import { checkIsStandalone } from './hooks/usePWAInstall';
 import { validateCurrentSession, logoutUser, AuthSession } from './utils/supabaseClient';
 import { 
   Play, 
@@ -49,6 +50,11 @@ import {
 
 const STORAGE_KEY = 'mf_treino_v1_lite_plan';
 
+function isStandalonePWA(): boolean {
+  if (typeof window === 'undefined') return false;
+  return checkIsStandalone() || window.location.search.includes('source=pwa');
+}
+
 function getInitialRoute(): string {
   if (typeof window === 'undefined') return '/';
   const path = window.location.pathname.toLowerCase();
@@ -57,7 +63,12 @@ function getInitialRoute(): string {
   if (path === '/entrar' || hash === '#/entrar' || hash === '#entrar') return '/entrar';
   if (path === '/cadastro' || hash === '#/cadastro' || hash === '#cadastro') return '/cadastro';
   if (path === '/recuperar' || hash === '#/recuperar' || hash === '#recuperar') return '/recuperar';
-  if (path === '/app' || hash === '#/app' || hash === '#app') return '/app';
+  if (path === '/app' || hash === '#/app' || hash === '#app' || path.startsWith('/app')) return '/app';
+
+  // Se estiver abrindo em modo PWA standalone ou atalho instalado com ?source=pwa,
+  // a rota interna estável pretendida é /app
+  if (isStandalonePWA()) return '/app';
+
   return '/';
 }
 
@@ -68,7 +79,8 @@ export default function App() {
   const [authInitialError, setAuthInitialError] = useState<string>('');
 
   const [plan, setPlan] = useState<WorkoutPlan>(SAMPLE_WORKOUT_PLAN);
-  const [viewMode, setViewMode] = useState<ViewMode>('home');
+  // Alunos autenticados abrem diretamente na área Minha Semana
+  const [viewMode, setViewMode] = useState<ViewMode>('my_week');
   const [collectionLevelTarget, setCollectionLevelTarget] = useState<string>('nivel-1');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isHostingerModalOpen, setIsHostingerModalOpen] = useState(false);
@@ -142,7 +154,19 @@ export default function App() {
             setSession(result.session);
             setAuthInitialError('');
             const initialRoute = getInitialRoute();
-            if (result.isOAuthCallback || initialRoute === '/entrar' || initialRoute === '/cadastro') {
+            setViewMode('my_week');
+
+            // Aluno autenticado:
+            // Ao abrir o aplicativo instalado (PWA) ou acessar '/', '/app', '/entrar' ou '/cadastro',
+            // acessa diretamente a área Minha Semana em /app, sem exibir a landing page comercial.
+            if (
+              result.isOAuthCallback ||
+              initialRoute === '/' ||
+              initialRoute === '/app' ||
+              initialRoute === '/entrar' ||
+              initialRoute === '/cadastro' ||
+              isStandalonePWA()
+            ) {
               try {
                 window.history.replaceState(null, '', '/app');
               } catch {}
@@ -157,12 +181,30 @@ export default function App() {
                 window.history.replaceState(null, '', targetRoute);
               } catch {}
               setCurrentRoute(targetRoute);
+            } else {
+              // Sessão expirada ou não autenticado:
+              // Se estava tentando abrir o aplicativo instalado / PWA (/app),
+              // direciona imediatamente para o login sem perder dados salvos.
+              const initialRoute = getInitialRoute();
+              if (initialRoute === '/app' || isStandalonePWA()) {
+                try {
+                  window.history.replaceState(null, '', '/entrar');
+                } catch {}
+                setCurrentRoute('/entrar');
+              }
             }
           }
         }
       } catch (err: any) {
         if (isMounted) {
           setSession(null);
+          const initialRoute = getInitialRoute();
+          if (initialRoute === '/app' || isStandalonePWA()) {
+            try {
+              window.history.replaceState(null, '', '/entrar');
+            } catch {}
+            setCurrentRoute('/entrar');
+          }
         }
       } finally {
         if (isMounted) {
@@ -335,6 +377,42 @@ export default function App() {
   }
 
   // =========================================================================
+  // TELA DE VERIFICAÇÃO DISCRETA (SPLASH SCREEN COM MARCA OFICIAL)
+  // Evita flash da landing page comercial antes de validar a sessão do aluno
+  // =========================================================================
+  if (isCheckingAuth) {
+    return (
+      <div 
+        role="status" 
+        aria-live="polite"
+        data-testid="pwa-auth-verification-splash"
+        className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 select-none"
+      >
+        <div className="flex flex-col items-center text-center space-y-4 animate-fadeIn">
+          <MelhorFormaLogo size={68} className="animate-pulse" />
+          <div className="space-y-1">
+            <div className="flex items-center justify-center gap-1.5">
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                Melhor Forma Play
+              </h1>
+              <span className="text-[11px] font-mono font-bold bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                40+
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Treine para viver mais e melhor
+            </p>
+          </div>
+          <div className="flex items-center gap-2 pt-2 text-xs text-slate-500">
+            <div className="w-3.5 h-3.5 border-2 border-emerald-500/40 border-t-emerald-400 rounded-full animate-spin" />
+            <span>Acessando sua área de treino...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
   // MODO DEMONSTRAÇÃO INTERATIVA PÚBLICA (Experimentar Minha Semana no Preview)
   // =========================================================================
   if (!session && publicDemoMode !== 'none') {
@@ -458,6 +536,7 @@ export default function App() {
         onAuthenticated={(newSession) => {
           setAuthInitialError('');
           setSession(newSession);
+          setViewMode('my_week');
           navigate('/app');
         }}
         onNavigate={navigate}
@@ -481,6 +560,7 @@ export default function App() {
         onAuthenticated={(newSession) => {
           setAuthInitialError('');
           setSession(newSession);
+          setViewMode('my_week');
           navigate('/app');
         }}
         onNavigate={navigate}
