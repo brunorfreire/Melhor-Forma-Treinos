@@ -11,9 +11,12 @@ import {
   X,
   User,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Type,
+  Bot
 } from 'lucide-react';
 import { ViewMode } from '../../types';
+import { AccessibilityTextSizeToggle } from '../accessibility/AccessibilityTextSizeToggle';
 
 interface MobileBottomNavProps {
   currentViewMode: ViewMode;
@@ -27,6 +30,8 @@ interface MobileBottomNavProps {
   userRole?: string;
   userName?: string;
   isPremium?: boolean;
+  onShowAccessibilityFeedback?: (msg: string) => void;
+  onOpenMFAssist?: () => void;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -40,7 +45,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onCloseMoreMenu,
   userRole,
   userName = 'Aluno',
-  isPremium = false
+  isPremium = false,
+  onShowAccessibilityFeedback,
+  onOpenMFAssist
 }) => {
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -134,6 +141,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 40+
               </span>
             </div>
+
+            {/* Controle de Acessibilidade: Tamanho das Letras */}
+            <AccessibilityTextSizeToggle
+              variant="full"
+              onShowFeedback={onShowAccessibilityFeedback}
+            />
 
             {/* Lista de Opções Secundárias */}
             <div className="space-y-1.5" role="menu">
@@ -250,6 +263,37 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   <ChevronRight className="w-4 h-4 shrink-0 opacity-70" />
                 </button>
               )}
+
+              {/* Opção Suporte & Ajuda (MF Assist) */}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onCloseMoreMenu();
+                  if (onOpenMFAssist) onOpenMFAssist();
+                }}
+                className="w-full min-h-[52px] p-3 rounded-2xl flex items-center justify-between gap-3 text-left transition active:scale-[0.99] bg-slate-950/60 hover:bg-slate-800/80 text-slate-200 border border-slate-800"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs sm:text-sm font-bold block">
+                        Suporte & Ajuda (MF Assist)
+                      </span>
+                      <span className="text-[9px] font-mono font-bold bg-emerald-500/25 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-500/35">
+                        IA First
+                      </span>
+                    </div>
+                    <span className="text-[11px] block truncate text-slate-400">
+                      Tire dúvidas sobre treinos, Minha Semana ou fale com o treinador
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 shrink-0 opacity-70" />
+              </button>
             </div>
           </div>
         </div>

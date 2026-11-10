@@ -96,6 +96,25 @@ export default defineConfig(() => {
             next();
           });
         }
+      },
+      {
+        name: 'support-api-middleware',
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            if (req.url && req.url.startsWith('/api/support/')) {
+              import('./src/server/supportApiMiddleware').then(m => {
+                m.handleSupportApiRequest(req, res, next);
+              }).catch(err => {
+                console.error('[Support API error]:', err);
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'SERVER_ERROR', message: 'Falha no serviço de suporte.' }));
+              });
+              return;
+            }
+            next();
+          });
+        }
       }
     ],
     resolve: {

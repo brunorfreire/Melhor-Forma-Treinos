@@ -23,6 +23,9 @@ import { GlobalAuthGate } from './components/auth/GlobalAuthGate';
 import { LandingPage } from './components/landing/LandingPage';
 import { MyWeekView } from './components/week/MyWeekView';
 import { MobileBottomNav } from './components/navigation/MobileBottomNav';
+import { AccessibilityTextSizeToggle } from './components/accessibility/AccessibilityTextSizeToggle';
+import { MFAssistFloatingWidget } from './components/support/MFAssistFloatingWidget';
+import { PremiumModal } from './components/PremiumModal';
 import { validateCurrentSession, logoutUser, AuthSession } from './utils/supabaseClient';
 import { 
   Play, 
@@ -40,7 +43,8 @@ import {
   User,
   ShieldAlert,
   ArrowLeft,
-  Calendar
+  Calendar,
+  Type
 } from 'lucide-react';
 
 const STORAGE_KEY = 'mf_treino_v1_lite_plan';
@@ -74,8 +78,19 @@ export default function App() {
   const [isGuidedExecutionMode, setIsGuidedExecutionMode] = useState(false);
   const [myWeekTargetDate, setMyWeekTargetDate] = useState<string | undefined>(undefined);
   const [myWeekDemoMode, setMyWeekDemoMode] = useState<boolean>(false);
+  const [myWeekAutoOpenWizard, setMyWeekAutoOpenWizard] = useState<boolean>(false);
   const [publicDemoMode, setPublicDemoMode] = useState<'none' | 'my_week' | 'guided'>('none');
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
+  const [accessibilityFeedback, setAccessibilityFeedback] = useState<string>('');
+  const [isAppPremiumModalOpen, setIsAppPremiumModalOpen] = useState<boolean>(false);
+  const [isMFAssistOpen, setIsMFAssistOpen] = useState<boolean>(false);
+
+  const showAccessibilityFeedback = (msg: string) => {
+    setAccessibilityFeedback(msg);
+    window.setTimeout(() => {
+      setAccessibilityFeedback(prev => (prev === msg ? '' : prev));
+    }, 2500);
+  };
 
   // Referência para o item de navegação ativo com scrollIntoView automático seguro
   const activeNavRef = useRef<HTMLButtonElement | null>(null);
@@ -519,6 +534,12 @@ export default function App() {
 
             {/* User Pill & Action on Right of Brand */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Botão de Acessibilidade: Tamanho das Letras (Aa / Aa+ / Aa++) */}
+              <AccessibilityTextSizeToggle
+                variant="compact"
+                onShowFeedback={showAccessibilityFeedback}
+              />
+
               {/* Badge de Identificação do Aluno/Admin */}
               <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2 sm:px-2.5 py-1 rounded-xl text-xs">
                 <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -699,9 +720,10 @@ export default function App() {
             setIsShareModalOpen(true);
           }}
           onOpenEvolution={() => setViewMode('evolution')}
-          onOpenMyWeek={(dateISO, demo) => {
+          onOpenMyWeek={(dateISO, demo, openWizard) => {
             setMyWeekTargetDate(dateISO);
             setMyWeekDemoMode(Boolean(demo));
+            setMyWeekAutoOpenWizard(Boolean(openWizard));
             setViewMode('my_week');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
@@ -712,6 +734,7 @@ export default function App() {
         <MyWeekView
           initialDateISO={myWeekTargetDate}
           initialDemoMode={myWeekDemoMode}
+          initialOpenWizard={myWeekAutoOpenWizard}
           userStatus={user?.subscription_status || 'free'}
           userRole={user?.role || 'student'}
           session={session || undefined}
@@ -867,7 +890,46 @@ export default function App() {
           userRole={user.role}
           userName={user.nome}
           isPremium={isPremium}
+          onShowAccessibilityFeedback={showAccessibilityFeedback}
+          onOpenMFAssist={() => setIsMFAssistOpen(true)}
         />
+      )}
+
+      {/* ========================================================================= */}
+      {/* MF ASSIST 40+ (CANAL PRINCIPAL DE SUPORTE IA FIRST & FAQ CURADA)          */}
+      {/* ========================================================================= */}
+      <MFAssistFloatingWidget
+        hidden={isGuidedExecutionMode}
+        isPremium={isPremium}
+        userRole={user.role}
+        userName={user.nome}
+        userEmail={user.email}
+        onOpenPremiumModal={() => setIsAppPremiumModalOpen(true)}
+        isOpenExternally={isMFAssistOpen}
+        onCloseExternal={() => setIsMFAssistOpen(false)}
+      />
+
+      {/* Modal Global de Apresentação do Acesso Premium */}
+      {isAppPremiumModalOpen && (
+        <PremiumModal
+          isOpen={isAppPremiumModalOpen}
+          onClose={() => setIsAppPremiumModalOpen(false)}
+        />
+      )}
+
+      {/* Toast Acessível de Feedback de Tamanho de Fonte */}
+      {accessibilityFeedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="accessibility-font-toast"
+          className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-emerald-500/60 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-fadeIn text-xs sm:text-sm font-bold pointer-events-none"
+        >
+          <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <Type className="w-3.5 h-3.5" />
+          </div>
+          <span>{accessibilityFeedback}</span>
+        </div>
       )}
     </main>
   );

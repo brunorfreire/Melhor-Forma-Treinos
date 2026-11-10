@@ -34,3 +34,44 @@
 .safe-top {
   padding-top: env(safe-area-inset-top, 16px);
 }
+
+/* ========================================================================= */
+/* ACESSIBILIDADE DE LEITURA 40+ (ESCALA DE FONTE GLOBAL)                    */
+/* ========================================================================= */
+html {
+  transition: font-size 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Nível 2: Maior (+10%) */
+html[data-font-scale="large"] {
+  font-size: 110%;
+}
+
+/* Nível 3: Muito maior (+20%) */
+html[data-font-scale="xlarge"] {
+  font-size: 120%;
+}
+
+/* Escalonamento de microlegendas em pixels fixos para legibilidade confortável */
+html[data-font-scale="large"] .text-\[8px\],
+html[data-font-scale="large"] .text-\[9px\] {
+  font-size: 10.5px !important;
+}
+html[data-font-scale="large"] .text-\[10px\] {
+  font-size: 11.5px !important;
+}
+html[data-font-scale="large"] .text-\[11px\] {
+  font-size: 12.5px !important;
+}
+
+html[data-font-scale="xlarge"] .text-\[8px\],
+html[data-font-scale="xlarge"] .text-\[9px\] {
+  font-size: 11.5px !important;
+}
+html[data-font-scale="xlarge"] .text-\[10px\] {
+  font-size: 12.5px !important;
+}
+html[data-font-scale="xlarge"] .text-\[11px\] {
+  font-size: 13.5px !important;
+}
+

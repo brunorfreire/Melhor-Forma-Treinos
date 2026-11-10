@@ -55,6 +55,7 @@ import { AuthSession } from '../../utils/supabaseClient';
 interface MyWeekViewProps {
   initialDateISO?: string;
   initialDemoMode?: boolean;
+  initialOpenWizard?: boolean;
   userStatus?: SubscriptionStatus;
   userRole?: UserRole;
   purchasedWorkoutIds?: string[];
@@ -67,6 +68,7 @@ interface MyWeekViewProps {
 export const MyWeekView: React.FC<MyWeekViewProps> = ({
   initialDateISO,
   initialDemoMode = false,
+  initialOpenWizard = false,
   userStatus = 'free',
   userRole = 'student',
   purchasedWorkoutIds = [],
@@ -98,10 +100,16 @@ export const MyWeekView: React.FC<MyWeekViewProps> = ({
   );
 
   const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
-  const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
+  const [isWizardOpen, setIsWizardOpen] = useState<boolean>(() => Boolean(initialOpenWizard));
   const [detailsModalWorkout, setDetailsModalWorkout] = useState<CatalogWorkout | null>(null);
   const [premiumModalWorkout, setPremiumModalWorkout] = useState<CatalogWorkout | null>(null);
   const [feedbackToast, setFeedbackToast] = useState<string>('');
+
+  useEffect(() => {
+    if (initialOpenWizard) {
+      setIsWizardOpen(true);
+    }
+  }, [initialOpenWizard]);
 
   // Sincroniza quando initialDemoMode ou initialDateISO mudam externamente
   useEffect(() => {

@@ -74,7 +74,7 @@ interface StreamingHomeViewProps {
   onPreviewExercise: (ex: Exercise) => void;
   onOpenShareModal?: (plan: WorkoutPlan) => void;
   onOpenEvolution?: () => void;
-  onOpenMyWeek?: (dateISO?: string, demoMode?: boolean) => void;
+  onOpenMyWeek?: (dateISO?: string, demoMode?: boolean, openWizard?: boolean) => void;
 }
 
 export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
@@ -604,6 +604,22 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
     }
   };
 
+  const handleStartHereClick = () => {
+    // Se o usuário ainda não tiver semana organizada, conduz ao assistente de organização (Minha Semana em 3 Passos)
+    // Se já houver semana configurada, conduz diretamente à tela Minha Semana
+    const hasConfiguredWeek = Boolean(
+      weeklySchedule &&
+      weeklySchedule.configuredWeekdays &&
+      weeklySchedule.configuredWeekdays.length > 0
+    );
+
+    if (onOpenMyWeek) {
+      onOpenMyWeek(undefined, false, !hasConfiguredWeek);
+    } else {
+      setIsTodayModalOpen(true);
+    }
+  };
+
   const handleStartWorkout = (session: CollectionWorkoutSession) => {
     // Se for premium, abre modal com opções ou desbloqueio
     if (session.accessLevel === 'premium') {
@@ -717,28 +733,25 @@ export const StreamingHomeView: React.FC<StreamingHomeViewProps> = ({
 
             {/* Hero CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-              {onOpenMyWeek ? (
-                <button
-                  onClick={() => onOpenMyWeek()}
-                  data-testid="hero-open-my-week-btn"
-                  className="min-h-[48px] py-3.5 px-6 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 active:scale-98 text-slate-950 font-black rounded-xl text-sm sm:text-base flex items-center justify-center gap-2.5 transition shadow-xl shadow-emerald-950/70"
-                >
-                  <Target className="w-4 h-4 text-slate-950 shrink-0" />
-                  <span>MINHA SEMANA</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => setIsTodayModalOpen(true)}
-                  className="min-h-[48px] py-3.5 px-6 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 active:scale-98 text-slate-950 font-black rounded-xl text-sm sm:text-base flex items-center justify-center gap-2.5 transition shadow-xl shadow-emerald-950/70"
-                >
-                  <Target className="w-4 h-4 text-slate-950 shrink-0" />
-                  <span>MEU TREINO DE HOJE</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleStartHereClick}
+                data-testid="hero-start-here-btn"
+                className="min-h-[50px] sm:min-h-[52px] py-3.5 px-6 sm:px-7 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 active:scale-98 text-slate-950 font-black rounded-2xl text-sm sm:text-base flex items-center justify-center gap-2.5 transition shadow-xl shadow-emerald-950/70"
+                aria-label="Inicie aqui sua jornada de treinos no Melhor Forma Play"
+                title="Ponto de partida ideal: por onde eu começo?"
+              >
+                <div className="w-6 h-6 rounded-lg bg-slate-950/15 flex items-center justify-center shrink-0">
+                  <Target className="w-4 h-4 text-slate-950 stroke-[2.75]" />
+                </div>
+                <span>INICIE AQUI</span>
+              </button>
 
               <button
+                type="button"
                 onClick={scrollToCatalog}
-                className="min-h-[48px] py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl text-sm sm:text-base flex items-center justify-center gap-2.5 transition shadow-xl shadow-emerald-950/60"
+                data-testid="hero-explore-catalog-btn"
+                className="min-h-[50px] sm:min-h-[52px] py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-2xl text-sm sm:text-base flex items-center justify-center gap-2.5 transition shadow-xl shadow-emerald-950/60"
               >
                 <Play className="w-4 h-4 fill-current text-white shrink-0" />
                 <span>EXPLORAR TREINOS</span>

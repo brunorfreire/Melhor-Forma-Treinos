@@ -58,14 +58,8 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
     setSubmittedInterest(true);
   };
 
-  const handleDirectWhatsApp = () => {
-    const phone = '5511999999999'; // Número institucional da equipe
-    const text = encodeURIComponent(
-      `Olá, Prof. Anderson! Estou no Melhor Forma Play e tenho interesse em desbloquear o Acesso Premium${
-        targetWorkout ? ` para treinar "${targetWorkout.title}"` : ''
-      }. Como posso garantir minha vaga?`
-    );
-    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+  const handleDirectContact = () => {
+    setShowInterestForm(true);
   };
 
   return (
@@ -168,6 +162,15 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                   <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     <div>
+                      <strong className="text-white block">Suporte Diferenciado:</strong>
+                      <span className="block text-slate-400">· Plano Free: Suporte inteligente pelo MF Assist.</span>
+                      <span className="block text-emerald-300 font-semibold mt-0.5">· Plano Premium: Suporte inteligente pelo MF Assist + contato direto com o treinador pelo WhatsApp.</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <div>
                       <strong className="text-white block">Vídeos Demonstrativos Validados:</strong>
                       <span>Orientações técnicas com postura, biomecânica e cuidados para articulações seguras.</span>
                     </div>
@@ -178,7 +181,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
               {/* Nota de Transparência sobre Pagamentos */}
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 inline mr-1 -mt-0.5" />
-                <strong>Fase de Homologação:</strong> O Melhor Forma Play não cobra valores automaticamente nem armazena cartões. Para liberar sua assinatura com suporte do professor Anderson, cadastre-se na lista de interesse oficial.
+                <strong>Fase de Homologação:</strong> O Melhor Forma Play não cobra valores automaticamente nem armazena cartões. Para liberar sua assinatura com suporte do treinador Bruno Freire, cadastre-se na lista de interesse oficial.
               </div>
 
               {/* Botões de Ação */}
@@ -193,11 +196,11 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({
                 </button>
 
                 <button
-                  onClick={handleDirectWhatsApp}
+                  onClick={handleDirectContact}
                   className="w-full min-h-[44px] px-4 py-2.5 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition"
                 >
                   <MessageCircle className="w-4 h-4 text-emerald-400" />
-                  <span>Falar com o Treinador no WhatsApp</span>
+                  <span>Cadastrar Interesse na Assinatura</span>
                 </button>
 
                 {onOpenAuth && (

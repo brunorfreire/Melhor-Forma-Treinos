@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { initFontScaleFromStorage } from './services/accessibilityPreferencesService';
+
+// Inicializa imediatamente a preferência de tamanho de fonte salva pelo aluno
+initFontScaleFromStorage();
 
 // Registra o Service Worker com proteção contra sandboxed iframes
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
