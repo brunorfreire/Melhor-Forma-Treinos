@@ -5,9 +5,15 @@ import {
   DayWorkoutStatus,
   PlannedFocusOption,
   StudentWeeklySchedule,
+  SubscriptionStatus,
+  UserRole,
   WeeklyPlanOrigin
 } from '../types';
-import { getAllCatalogWorkouts, getHydratedWorkout } from '../data/workoutCatalogService';
+import {
+  canUserAccessWorkout,
+  getAllCatalogWorkouts,
+  getHydratedWorkout
+} from '../data/workoutCatalogService';
 import { matchesClassificationFilter, getWorkoutExerciseCount } from './catalogClassificationService';
 import { getStoredSession } from '../utils/supabaseClient';
 
@@ -235,6 +241,100 @@ export function doesWorkoutMatchFocus(workout: CatalogWorkout, plannedFocus?: st
     return true;
   }
   return matchesClassificationFilter(workout, plannedFocus);
+}
+
+export interface DayFocusWorkoutFilterOptions {
+  plannedFocus?: string;
+  searchTerm?: string;
+  levelFilter?: 'todos' | 'iniciante' | 'intermediario' | 'avancado';
+  durationFilter?: 'todos' | 'curto' | 'medio' | 'longo';
+  equipmentFilter?: string;
+  accessFilter?: 'todos' | 'liberados';
+  userStatus?: SubscriptionStatus;
+  userRole?: UserRole;
+  purchasedWorkoutIds?: string[];
+  includeUnpublished?: boolean;
+}
+
+export function parseWorkoutDurationMinutes(durationStr?: string): number {
+  if (!durationStr) return 30;
+  const match = durationStr.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : 30;
+}
+
+/**
+ * Filtra e ordena treinos para seleção/substituição em Minha Semana.
+ * A restrição pelo grupamento muscular / foco planejado é OBRIGATÓRIA e aplicada antes
+ * de qualquer busca, filtro transversal ou ordenação.
+ */
+export function filterWorkoutsForDayFocus(
+  workouts: CatalogWorkout[],
+  options: DayFocusWorkoutFilterOptions
+): CatalogWorkout[] {
+  const {
+    plannedFocus,
+    searchTerm = '',
+    levelFilter = 'todos',
+    durationFilter = 'todos',
+    equipmentFilter = 'todos',
+    accessFilter = 'todos',
+    userStatus,
+    userRole,
+    purchasedWorkoutIds,
+    includeUnpublished = false
+  } = options;
+
+  const query = searchTerm.trim().toLowerCase();
+
+  // 1. Filtro obrigatório de publicação e grupamento muscular / foco do dia
+  const focusEligible = workouts.filter((w) => {
+    if (!includeUnpublished && w.status !== 'publicado') return false;
+    return doesWorkoutMatchFocus(w, plannedFocus);
+  });
+
+  // 2. Filtros secundários (acesso, nível, duração, equipamento e busca) dentro do foco já isolado
+  const filtered = focusEligible.filter((w) => {
+    const hasAccess = canUserAccessWorkout(w, userStatus, userRole, purchasedWorkoutIds);
+    if (accessFilter === 'liberados' && !hasAccess) {
+      return false;
+    }
+
+    if (levelFilter !== 'todos' && w.level !== levelFilter) {
+      return false;
+    }
+
+    if (durationFilter !== 'todos') {
+      const mins = parseWorkoutDurationMinutes(w.duration);
+      if (durationFilter === 'curto' && mins > 25) return false;
+      if (durationFilter === 'medio' && (mins <= 25 || mins > 38)) return false;
+      if (durationFilter === 'longo' && mins <= 38) return false;
+    }
+
+    if (equipmentFilter !== 'todos') {
+      const eqs = (w.equipments || []).map(e => e.toLowerCase());
+      if (!eqs.includes(equipmentFilter.toLowerCase())) return false;
+    }
+
+    if (query) {
+      const haystack = `${w.title} ${w.objective} ${w.description} ${(w.equipments || []).join(' ')}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+
+    return true;
+  });
+
+  // 3. Ordenação aplicada SOMENTE depois do filtro obrigatório (Gratuitos primeiro, depois liberados/Premium, depois título)
+  return filtered.sort((a, b) => {
+    const aAccess = canUserAccessWorkout(a, userStatus, userRole, purchasedWorkoutIds) ? 1 : 0;
+    const bAccess = canUserAccessWorkout(b, userStatus, userRole, purchasedWorkoutIds) ? 1 : 0;
+    if (aAccess !== bAccess) return bAccess - aAccess;
+
+    const aIsFree = a.accessLevel === 'free' ? 1 : 0;
+    const bIsFree = b.accessLevel === 'free' ? 1 : 0;
+    if (aIsFree !== bIsFree) return bIsFree - aIsFree;
+
+    return a.title.localeCompare(b.title);
+  });
 }
 
 /**

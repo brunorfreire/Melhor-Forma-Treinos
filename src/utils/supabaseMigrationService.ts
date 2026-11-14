@@ -1186,9 +1186,9 @@ VALUES
   ('ex-remada-curvada-halteres', 'exercise-media-public', 'remada-curvada-halteres.gif', 'remada-curvada-halteres.gif', 'image/gif', true, 'public'),
   ('ex-subida-step-degrau', 'exercise-media-public', 'subida-step-degrau.webp', 'subida-step-degrau.webp', 'image/webp', true, 'public'),
   ('ex-subida-step-degrau', 'exercise-media-public', 'subida-step-degrau.gif', 'subida-step-degrau.gif', 'image/gif', true, 'public'),
-  -- Exercício exclusivo Premium (w-sup-06): bucket fechado, tier premium
-  ('ex-triceps-frances-halter', 'exercise-media-premium', 'triceps-frances-halter.webp', 'triceps-frances-halter.webp', 'image/webp', true, 'premium'),
-  ('ex-triceps-frances-halter', 'exercise-media-premium', 'triceps-frances-halter.gif', 'triceps-frances-halter.gif', 'image/gif', true, 'premium'),
+  -- Exercício presente em treino gratuito (w-sup-06): bucket público, tier public
+  ('ex-triceps-frances-halter', 'exercise-media-public', 'triceps-frances-halter.webp', 'triceps-frances-halter.webp', 'image/webp', true, 'public'),
+  ('ex-triceps-frances-halter', 'exercise-media-public', 'triceps-frances-halter.gif', 'triceps-frances-halter.gif', 'image/gif', true, 'public'),
   -- Exercício pendente/sem vínculo a treinos: bucket fechado, is_approved = false
   ('ex-mesa-flexora', 'exercise-media-premium', 'mesa-flexora.webp', 'mesa-flexora.webp', 'image/webp', false, 'premium'),
   ('ex-mesa-flexora', 'exercise-media-premium', 'mesa-flexora.gif', 'mesa-flexora.gif', 'image/gif', false, 'premium')

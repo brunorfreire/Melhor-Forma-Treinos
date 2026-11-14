@@ -52,13 +52,19 @@ allWorkouts.forEach(w => {
 
 // 5. Auditoria da categoria 'Peitoral, Ombro e Tríceps' (PUSH)
 const pushMatches = allWorkouts.filter(w => matchesClassificationFilter(w, 'peitoral-ombro-triceps'));
-assert(pushMatches.length === 4, `Filtro 'Peitoral, Ombro e Tríceps' deve retornar exatamente 4 treinos genuínos de Push (encontrado: ${pushMatches.length})`);
+assert(pushMatches.length === 3, `Filtro 'Peitoral, Ombro e Tríceps' deve retornar exatamente 3 treinos genuínos de Push (encontrado: ${pushMatches.length})`);
 
-const expectedPushIds = ['w-sup-01', 'w-sup-06', 'w-sup-09', 'w-sup-11'];
+const expectedPushIds = ['w-sup-01', 'w-sup-06', 'w-sup-11'];
 const actualPushIds = pushMatches.map(w => w.id).sort();
 assert(
   JSON.stringify(actualPushIds) === JSON.stringify(expectedPushIds.sort()),
   `IDs de Push devem ser exatamente [${expectedPushIds.join(', ')}] (encontrado: [${actualPushIds.join(', ')}])`
+);
+
+const sup09Meta = getWorkoutClassification('w-sup-09');
+assert(
+  sup09Meta?.primaryFocus === 'superiores_composto',
+  `Treino misto PUSH+PULL 'w-sup-09' deve permanecer em 'superiores_composto' (encontrado: ${sup09Meta?.primaryFocus})`
 );
 
 // 6. Teste de NÃO-CONTAMINAÇÃO CRUZADA (Zero False Positives)
@@ -101,9 +107,29 @@ assert(categorySum === 72, `A soma das coleções deve ser exatamente 72 (encont
 // 9. Separação de Filtros Transversais (Níveis e Acesso)
 const freeWorkouts = allWorkouts.filter(w => matchesClassificationFilter(w, 'gratis'));
 const premiumWorkouts = allWorkouts.filter(w => matchesClassificationFilter(w, 'premium'));
-assert(freeWorkouts.length === 12, `Devem existir exatamente 12 treinos gratuitos (encontrado: ${freeWorkouts.length})`);
-assert(premiumWorkouts.length === 60, `Devem existir exatamente 60 treinos Premium (encontrado: ${premiumWorkouts.length})`);
+assert(freeWorkouts.length === 15, `Devem existir exatamente 15 treinos gratuitos (encontrado: ${freeWorkouts.length})`);
+assert(premiumWorkouts.length === 57, `Devem existir exatamente 57 treinos Premium (encontrado: ${premiumWorkouts.length})`);
 assert(freeWorkouts.length + premiumWorkouts.length === 72, `A soma de Grátis + Premium deve ser 72`);
+
+// 9b. Mínimo de 2 treinos Free publicados por divisão principal do planejamento semanal
+const mainDivisions = [
+  'peitoral-ombro-triceps',
+  'costas-biceps',
+  'inferiores',
+  'full_body',
+  'forca_40_plus',
+  'cardiorespiratorio',
+  'mobilidade_equilibrio'
+];
+mainDivisions.forEach(div => {
+  const freeInDiv = allWorkouts.filter(
+    w => w.status === 'publicado' && w.accessLevel === 'free' && matchesClassificationFilter(w, div)
+  );
+  assert(
+    freeInDiv.length >= 2,
+    `Divisão '${div}' deve ter pelo menos 2 treinos gratuitos publicados (encontrado: ${freeInDiv.length}: [${freeInDiv.map(w => w.id).join(', ')}])`
+  );
+});
 
 // 10. Relatório Global de Auditoria
 const report = auditCatalogClassification();

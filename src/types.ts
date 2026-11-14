@@ -185,6 +185,8 @@ export interface CatalogWorkout {
   primaryFocus?: PrimaryMuscleFocus;
   movementPattern?: MovementPatternType;
   secondaryFocus?: string[];
+  classificationReviewRequired?: boolean;
+  classificationReviewReason?: string;
 }
 
 /**

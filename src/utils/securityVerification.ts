@@ -72,8 +72,8 @@ export function runSecurityAndIntegrityAudit(): {
 
   results.push({
     name: 'Identificação correta de mídias físicas exclusivas Premium',
-    passed: premiumOnlyFiles.length === 4,
-    details: `Arquivos protegidos identificados (${premiumOnlyFiles.length}): ${premiumOnlyFiles.join(', ')} (mesa-flexora e triceps-frances-halter).`
+    passed: premiumOnlyFiles.length === 2,
+    details: `Arquivos protegidos identificados (${premiumOnlyFiles.length}): ${premiumOnlyFiles.join(', ')} (apenas mesa-flexora permanece exclusiva Premium; triceps-frances-halter foi liberado via w-sup-06).`
   });
 
   // 3. Auditoria do Script SQL DDL

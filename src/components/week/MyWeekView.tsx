@@ -35,6 +35,7 @@ import {
   updateScheduledDay,
   getWeeklyScheduleMetrics,
   getWorkoutSummaryDetails,
+  getFocusOptionById,
   setDemoScheduleOrigin,
   resetDemoWeeklySchedule
 } from '../../services/weeklyScheduleService';
@@ -271,6 +272,11 @@ export const MyWeekView: React.FC<MyWeekViewProps> = ({
     confirmTrainerOverride: boolean = true
   ) => {
     if (!selectedDayMeta) return;
+    const fallbackFocus =
+      chosenWorkout.primaryFocus && getFocusOptionById(chosenWorkout.primaryFocus)
+        ? chosenWorkout.primaryFocus
+        : chosenWorkout.category;
+
     const res = updateScheduledDay(
       weekStartISO,
       selectedDayMeta.dateISO,
@@ -278,7 +284,7 @@ export const MyWeekView: React.FC<MyWeekViewProps> = ({
         dayType:
           selectedDayItem?.dayType === 'rest' ? 'workout' : selectedDayItem?.dayType || 'workout',
         workoutId: chosenWorkout.id,
-        plannedFocus: selectedDayItem?.plannedFocus || chosenWorkout.category
+        plannedFocus: selectedDayItem?.plannedFocus || fallbackFocus
       },
       { isDemo: isDemoMode, confirmTrainerOverride }
     );
@@ -732,7 +738,7 @@ export const MyWeekView: React.FC<MyWeekViewProps> = ({
                     Prescrição detalhada exclusiva para assinantes Premium
                   </p>
                   <p className="text-xs text-slate-400">
-                    Escolha um dos 12 treinos gratuitos ou desbloqueie o acesso Premium para visualizar séries, cargas e vídeos desta sessão.
+                    Escolha um dos 15 treinos gratuitos ou desbloqueie o acesso Premium para visualizar séries, cargas e vídeos desta sessão.
                   </p>
                 </div>
               )}

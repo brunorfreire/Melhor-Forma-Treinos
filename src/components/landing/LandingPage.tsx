@@ -60,8 +60,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       a: 'Sim. Todo o planejamento técnico é orientado para a saúde articular e postural de pessoas acima de 40 anos, sem saltos agressivos ou cargas desproporcionais. Os exercícios fortalecem a musculatura de sustentação (glúteos, paravertebrais e core), auxiliando no alívio de sobrecargas. Recomendamos sempre liberação médica prévia para casos de lesões diagnosticadas.'
     },
     {
-      q: 'Os 12 treinos gratuitos têm prazo de validade?',
-      a: 'Não. Ao criar sua conta gratuita e confirmar seu e-mail, os 12 treinos do catálogo Free ficam permanentemente liberados para você praticar quantas vezes desejar, com prescrições completas, orientações técnicas e cronômetro integrado.'
+      q: 'Os 15 treinos gratuitos têm prazo de validade?',
+      a: 'Não. Ao criar sua conta gratuita e confirmar seu e-mail, os 15 treinos do catálogo Free ficam permanentemente liberados para você praticar quantas vezes desejar, com prescrições completas, orientações técnicas e cronômetro integrado.'
     },
     {
       q: 'Como funciona a confirmação de cadastro?',
@@ -72,8 +72,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       a: 'Para quem está retomando ou iniciando, sugerimos de 2 a 3 sessões por semana, com dias de descanso intercalados. Cada sessão dura entre 15 e 30 minutos, facilitando a consistência na sua rotina.'
     },
     {
-      q: 'Como posso acessar os 60 treinos Premium?',
-      a: 'O plano Premium é opcional e oferece acesso a mais 60 sessões especializadas (divididas por grupos musculares específicos, objetivos intensivos e programas completos de condicionamento), além da biblioteca com variações de exercícios.'
+      q: 'Como posso acessar os 57 treinos Premium?',
+      a: 'O plano Premium é opcional e oferece acesso a mais 57 sessões especializadas (divididas por grupos musculares específicos, objetivos intensivos e programas completos de condicionamento), além da biblioteca com variações de exercícios.'
     }
   ];
 
@@ -190,7 +190,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Texto de Apoio Obrigatório */}
             <p className="text-xs sm:text-sm text-emerald-300 font-semibold tracking-wide">
-              Crie sua conta e tenha acesso a 12 treinos gratuitos.
+              Crie sua conta e tenha acesso a 15 treinos gratuitos.
             </p>
 
             {/* Demonstração Interativa "Experimentar Minha Semana" acessível no Preview */}
@@ -217,7 +217,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
             <div className="flex items-center gap-2 bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 px-3 py-1.5 rounded-full">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>12 treinos gratuitos liberados</span>
+              <span>15 treinos gratuitos liberados</span>
             </div>
             <div className="flex items-center gap-2 bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 px-3 py-1.5 rounded-full">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -318,7 +318,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </p>
             </div>
             <div className="pt-6 flex items-center justify-between border-t border-slate-800/80 mt-6">
-              <span className="text-xs text-slate-400">12 treinos inclusos na conta gratuita</span>
+              <span className="text-xs text-slate-400">15 treinos inclusos na conta gratuita</span>
               <button 
                 type="button"
                 onClick={() => onNavigate('/cadastro')}
@@ -521,7 +521,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Evolua no seu ritmo.
           </h2>
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-            Acreditamos que todo mundo deve ter acesso à força de qualidade. Por isso, 12 treinos são 100% livres para sempre na sua conta.
+            Acreditamos que todo mundo deve ter acesso à força de qualidade. Por isso, 15 treinos são 100% livres para sempre na sua conta.
           </p>
         </div>
 
@@ -543,7 +543,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <ul className="space-y-2.5 pt-2 text-xs sm:text-sm text-slate-300">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>12 treinos completos</strong> com séries, repetições e descansos liberados</span>
+                  <span><strong>15 treinos completos</strong> com séries, repetições e descansos liberados</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
@@ -587,7 +587,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <ul className="space-y-2.5 pt-2 text-xs sm:text-sm text-slate-400">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <span><strong>60 treinos adicionais</strong> divididos em 6 coleções completas</span>
+                  <span><strong>57 treinos adicionais</strong> divididos em 6 coleções completas</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -691,7 +691,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <ArrowRight className="w-5 h-5" />
           </button>
           <span className="text-xs text-slate-400 block">
-            Acesso imediato aos 12 treinos gratuitos com cadastro verificado.
+            Acesso imediato aos 15 treinos gratuitos com cadastro verificado.
           </span>
         </div>
       </section>

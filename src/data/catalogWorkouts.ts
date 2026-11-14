@@ -91,7 +91,7 @@ export const CATALOG_COLLECTIONS: CollectionMeta[] = [
  */
 export const DEFAULT_FREE_WORKOUT_IDS: string[] = [
   'w-40p-01', 'w-40p-05',
-  'w-sup-01', 'w-sup-05',
+  'w-sup-01', 'w-sup-02', 'w-sup-05', 'w-sup-06', 'w-sup-07',
   'w-inf-01', 'w-inf-05',
   'w-fb-01', 'w-fb-05',
   'w-cardio-01', 'w-cardio-05',
@@ -341,8 +341,8 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     modelGender: 'masculino',
     modelAgeGroup: '50+',
     status: 'publicado',
-    accessLevel: 'premium',
-    updatedAt: '2026-10-13T10:00:00Z'
+    accessLevel: 'free',
+    updatedAt: '2026-11-14T10:00:00Z'
   },
   {
     id: 'w-sup-03',
@@ -409,8 +409,8 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     modelGender: 'feminino',
     modelAgeGroup: '45+',
     status: 'publicado',
-    accessLevel: 'premium',
-    updatedAt: '2026-10-13T10:00:00Z'
+    accessLevel: 'free',
+    updatedAt: '2026-11-14T10:00:00Z'
   },
   {
     id: 'w-sup-07',
@@ -426,8 +426,8 @@ export const INITIAL_CATALOG_WORKOUTS: CatalogWorkout[] = [
     modelGender: 'feminino',
     modelAgeGroup: '52+',
     status: 'publicado',
-    accessLevel: 'premium',
-    updatedAt: '2026-10-13T10:00:00Z'
+    accessLevel: 'free',
+    updatedAt: '2026-11-14T10:00:00Z'
   },
   {
     id: 'w-sup-08',

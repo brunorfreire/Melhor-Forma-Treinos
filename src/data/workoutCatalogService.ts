@@ -34,7 +34,11 @@ export function getAllCatalogWorkouts(): CatalogWorkout[] {
       exerciseCount: meta?.exerciseCount || getWorkoutExerciseCount(w.id),
       primaryFocus: meta?.primaryFocus || w.primaryFocus,
       movementPattern: meta?.movementPattern || w.movementPattern,
-      secondaryFocus: meta?.secondaryFocus || w.secondaryFocus || []
+      secondaryFocus: meta?.secondaryFocus || w.secondaryFocus || [],
+      classificationReviewRequired:
+        meta?.classificationReviewRequired ?? w.classificationReviewRequired,
+      classificationReviewReason:
+        meta?.classificationReviewReason ?? w.classificationReviewReason
     };
   };
 
@@ -56,6 +60,15 @@ export function getAllCatalogWorkouts(): CatalogWorkout[] {
               ? 'Puxar e Empurrar'
               : w.title;
 
+          const shouldSyncFactoryFree =
+            Boolean(initial) &&
+            initial?.accessLevel === 'free' &&
+            w.accessLevel !== 'free' &&
+            (!w.updatedAt || w.updatedAt <= '2026-10-20T03:15:00Z');
+
+          const syncedAccessLevel = shouldSyncFactoryFree && initial ? initial.accessLevel : w.accessLevel;
+          const syncedUpdatedAt = shouldSyncFactoryFree && initial ? initial.updatedAt : w.updatedAt;
+
           if (
             initial &&
             (!w.coverImage ||
@@ -65,6 +78,8 @@ export function getAllCatalogWorkouts(): CatalogWorkout[] {
             return {
               ...w,
               title: normalizedTitle,
+              accessLevel: syncedAccessLevel,
+              updatedAt: syncedUpdatedAt,
               coverImage: initial.coverImage,
               photoAlt: initial.photoAlt,
               modelGender: initial.modelGender,
@@ -73,7 +88,9 @@ export function getAllCatalogWorkouts(): CatalogWorkout[] {
           }
           return {
             ...w,
-            title: normalizedTitle
+            title: normalizedTitle,
+            accessLevel: syncedAccessLevel,
+            updatedAt: syncedUpdatedAt
           };
         });
         return workouts.map(enrich);

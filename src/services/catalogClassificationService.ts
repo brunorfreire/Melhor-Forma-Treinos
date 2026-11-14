@@ -9,6 +9,8 @@ export interface WorkoutClassificationMeta {
   movementPattern: MovementPatternType;
   secondaryFocus: string[];
   exerciseCount: number;
+  classificationReviewRequired?: boolean;
+  classificationReviewReason?: string;
 }
 
 /**
@@ -215,9 +217,9 @@ export const CATALOG_CLASSIFICATIONS: Record<string, WorkoutClassificationMeta> 
     id: 'w-sup-09',
     title: 'Densidade de Superiores Avançada',
     category: 'superiores',
-    primaryFocus: 'peitoral-ombro-triceps', // PUSH PREDOMINANTE (Supino, Desenvolvimento, Tríceps)
-    movementPattern: 'empurrar',
-    secondaryFocus: ['superiores', 'costas-biceps'],
+    primaryFocus: 'superiores_composto', // MISTO PUSH + PULL (Supino, Remada Curvada, Desenvolvimento, Tríceps)
+    movementPattern: 'composto',
+    secondaryFocus: ['superiores', 'peitoral-ombro-triceps', 'costas-biceps'],
     exerciseCount: EXERCISE_COUNT_BY_ID['w-sup-09'] || 4
   },
   'w-sup-10': {
@@ -720,40 +722,122 @@ export function getWorkoutExerciseCount(workoutId: string): number {
   return 4; // fallback seguro para manter o card funcional
 }
 
+const UPPER_ONLY_FOCUSES = new Set<string>([
+  'peitoral-ombro-triceps',
+  'costas-biceps',
+  'bracos',
+  'cintura_escapular',
+  'superiores_composto'
+]);
+
+/**
+ * Verifica se a classificação de um treino é confiável e livre de pendência de revisão.
+ * Treinos sem primaryFocus oficial/verificado, sinalizados para revisão ou com contradição
+ * entre categoria e foco primário não devem ser incluídos em filtros musculares específicos.
+ */
+export function isWorkoutClassificationReliable(workout: {
+  id: string;
+  category?: string;
+  primaryFocus?: string;
+  classificationReviewRequired?: boolean;
+  classificationReviewReason?: string;
+}): { reliable: boolean; reason?: string } {
+  const meta = CATALOG_CLASSIFICATIONS[workout.id];
+
+  if (workout.classificationReviewRequired || meta?.classificationReviewRequired) {
+    return {
+      reliable: false,
+      reason:
+        workout.classificationReviewReason ||
+        meta?.classificationReviewReason ||
+        'Classificação marcada para revisão administrativa'
+    };
+  }
+
+  const primaryFocus = meta?.primaryFocus || workout.primaryFocus;
+  const cat = meta?.category || workout.category;
+
+  if (!primaryFocus) {
+    return {
+      reliable: false,
+      reason: 'Treino sem primaryFocus oficial verificado'
+    };
+  }
+
+  // Validação de consistência entre categoria e foco primário
+  if (cat) {
+    if (UPPER_ONLY_FOCUSES.has(primaryFocus) && cat !== 'superiores' && cat !== primaryFocus) {
+      return {
+        reliable: false,
+        reason: `Conflito de classificação: primaryFocus "${primaryFocus}" incompatível com categoria "${cat}"`
+      };
+    }
+
+    if (
+      (primaryFocus === 'inferiores' ||
+        primaryFocus === 'full_body' ||
+        primaryFocus === 'mobilidade_equilibrio' ||
+        primaryFocus === 'cardiorespiratorio' ||
+        primaryFocus === 'forca_40_plus') &&
+      cat !== primaryFocus
+    ) {
+      return {
+        reliable: false,
+        reason: `Conflito de classificação: primaryFocus "${primaryFocus}" incompatível com categoria "${cat}"`
+      };
+    }
+  }
+
+  return { reliable: true };
+}
+
 /**
  * Verifica se um treino pertence genuinamente ao agrupamento Peitoral, Ombro e Tríceps (PUSH)
- * Regra: Foco primário Push / Membros Superiores anteriores ou foco explícito.
- * NUNCA permite treinos de Inferiores, Costas puro, Cardio ou Mobilidade pura.
+ * Regra: Foco primário Push / Membros Superiores anteriores com classificação confiável.
+ * NUNCA permite treinos mistos PUSH+PULL, Inferiores, Costas puro, Cardio ou Mobilidade pura.
  */
-export function isPushWorkout(workout: { id: string; category?: string; primaryFocus?: string }): boolean {
+export function isPushWorkout(workout: {
+  id: string;
+  category?: string;
+  primaryFocus?: string;
+  classificationReviewRequired?: boolean;
+}): boolean {
+  if (!isWorkoutClassificationReliable(workout).reliable) return false;
   const meta = CATALOG_CLASSIFICATIONS[workout.id];
-  if (meta) {
-    return meta.primaryFocus === 'peitoral-ombro-triceps';
-  }
-  return workout.primaryFocus === 'peitoral-ombro-triceps';
+  const primaryFocus = meta?.primaryFocus || workout.primaryFocus;
+  return primaryFocus === 'peitoral-ombro-triceps';
 }
 
 /**
  * Verifica se um treino pertence genuinamente ao agrupamento Costas, Bíceps e Trapézio (PULL)
- * Regra: Foco primário Pull / Costas e Bíceps.
+ * Regra: Foco primário Pull / Costas e Bíceps com classificação confiável.
  */
-export function isPullWorkout(workout: { id: string; category?: string; primaryFocus?: string }): boolean {
+export function isPullWorkout(workout: {
+  id: string;
+  category?: string;
+  primaryFocus?: string;
+  classificationReviewRequired?: boolean;
+}): boolean {
+  if (!isWorkoutClassificationReliable(workout).reliable) return false;
   const meta = CATALOG_CLASSIFICATIONS[workout.id];
-  if (meta) {
-    return meta.primaryFocus === 'costas-biceps';
-  }
-  return workout.primaryFocus === 'costas-biceps';
+  const primaryFocus = meta?.primaryFocus || workout.primaryFocus;
+  return primaryFocus === 'costas-biceps';
 }
 
 /**
  * Verifica se um treino pertence aos Membros Inferiores
  */
-export function isLowerWorkout(workout: { id: string; category?: string; primaryFocus?: string }): boolean {
+export function isLowerWorkout(workout: {
+  id: string;
+  category?: string;
+  primaryFocus?: string;
+  classificationReviewRequired?: boolean;
+}): boolean {
+  if (!isWorkoutClassificationReliable(workout).reliable) return false;
   const meta = CATALOG_CLASSIFICATIONS[workout.id];
-  if (meta) {
-    return meta.category === 'inferiores' || meta.primaryFocus === 'inferiores';
-  }
-  return workout.category === 'inferiores' || workout.primaryFocus === 'inferiores';
+  const primaryFocus = meta?.primaryFocus || workout.primaryFocus;
+  const cat = meta?.category || workout.category;
+  return primaryFocus === 'inferiores' && cat === 'inferiores';
 }
 
 /**
@@ -769,17 +853,44 @@ export function matchesClassificationFilter(
     accessLevel?: string;
     pillarId?: string;
     focus?: string;
+    classificationReviewRequired?: boolean;
+    classificationReviewReason?: string;
   },
   filterId: string
 ): boolean {
-  if (!filterId || filterId === 'todos') return true;
+  if (!filterId || filterId === 'todos' || filterId === 'livre') return true;
+
+  // Filtros Transversais de Nível
+  if (filterId === 'nivel-1') {
+    return workout.levelId === 'nivel-1' || workout.level === 'iniciante';
+  }
+  if (filterId === 'nivel-2') {
+    return workout.levelId === 'nivel-2' || workout.level === 'intermediario';
+  }
+  if (filterId === 'nivel-3') {
+    return workout.levelId === 'nivel-3' || workout.level === 'avancado';
+  }
+
+  // Filtros Transversais de Acesso Comercial
+  if (filterId === 'gratis') {
+    return workout.accessLevel === 'free';
+  }
+  if (filterId === 'premium') {
+    return workout.accessLevel === 'premium';
+  }
+
+  // Para qualquer filtro muscular/foco específico, exigir classificação confiável
+  const reliability = isWorkoutClassificationReliable(workout);
+  if (!reliability.reliable) {
+    return false;
+  }
 
   const meta = CATALOG_CLASSIFICATIONS[workout.id];
   const cat = meta?.category || workout.category;
   const primaryFocus = meta?.primaryFocus || workout.primaryFocus;
 
   switch (filterId) {
-    // 1. Divisões Anatômicas Específicas
+    // 1. Divisões Anatômicas Específicas (estritas por primaryFocus)
     case 'peitoral-ombro-triceps':
       return primaryFocus === 'peitoral-ombro-triceps';
 
@@ -788,44 +899,33 @@ export function matchesClassificationFilter(
     case 'costas-biceps-trapezio':
       return primaryFocus === 'costas-biceps';
 
-    // 2. Categorias Oficiais do Catálogo
+    // 2. Categorias Oficiais do Catálogo (validadas por primaryFocus e categoria)
     case 'superiores':
-      return cat === 'superiores';
+      return cat === 'superiores' && UPPER_ONLY_FOCUSES.has(primaryFocus || '');
 
     case 'inferiores':
-      return cat === 'inferiores';
+      return primaryFocus === 'inferiores' && cat === 'inferiores';
 
     case 'full_body':
-      return cat === 'full_body';
+      return primaryFocus === 'full_body' && cat === 'full_body';
 
     case 'forca_40_plus':
-      return cat === 'forca_40_plus';
+      return primaryFocus === 'forca_40_plus' && cat === 'forca_40_plus';
 
     case 'cardiorespiratorio':
-      return cat === 'cardiorespiratorio';
+      return primaryFocus === 'cardiorespiratorio' && cat === 'cardiorespiratorio';
 
     case 'mobilidade_equilibrio':
-      return cat === 'mobilidade_equilibrio';
+      return primaryFocus === 'mobilidade_equilibrio' && cat === 'mobilidade_equilibrio';
 
-    // 3. Filtros Transversais de Nível
-    case 'nivel-1':
-      return workout.levelId === 'nivel-1' || workout.level === 'iniciante';
-
-    case 'nivel-2':
-      return workout.levelId === 'nivel-2' || workout.level === 'intermediario';
-
-    case 'nivel-3':
-      return workout.levelId === 'nivel-3' || workout.level === 'avancado';
-
-    // 4. Filtros Transversais de Acesso Comercial
-    case 'gratis':
-      return workout.accessLevel === 'free';
-
-    case 'premium':
-      return workout.accessLevel === 'premium';
+    case 'bracos':
+    case 'cintura_escapular':
+    case 'superiores_composto':
+      return primaryFocus === filterId;
 
     default:
-      return true;
+      // Nunca permitir todos os treinos para um foco desconhecido
+      return primaryFocus === filterId;
   }
 }
 
@@ -842,6 +942,7 @@ export interface CatalogAuditReport {
   empurrarPuxarSeguro: { id: string; title: string; exerciseCount: number; valid: boolean };
   crossContaminationPushViolations: string[];
   workoutsWithZeroExercises: string[];
+  workoutsNeedingReview: { id: string; title: string; reason: string }[];
   isValid: boolean;
 }
 
@@ -859,6 +960,7 @@ export function auditCatalogClassification(): CatalogAuditReport {
   const pullWorkouts: { id: string; title: string; count: number }[] = [];
   const crossContaminationPushViolations: string[] = [];
   const workoutsWithZeroExercises: string[] = [];
+  const workoutsNeedingReview: { id: string; title: string; reason: string }[] = [];
 
   ids.forEach(id => {
     const meta = CATALOG_CLASSIFICATIONS[id];
@@ -867,6 +969,15 @@ export function auditCatalogClassification(): CatalogAuditReport {
     categoryDistribution[meta.category] = (categoryDistribution[meta.category] || 0) + 1;
     primaryFocusDistribution[meta.primaryFocus] = (primaryFocusDistribution[meta.primaryFocus] || 0) + 1;
 
+    const reliability = isWorkoutClassificationReliable(meta);
+    if (!reliability.reliable) {
+      workoutsNeedingReview.push({
+        id: meta.id,
+        title: meta.title,
+        reason: reliability.reason || 'Revisão de classificação necessária'
+      });
+    }
+
     if (meta.exerciseCount === 0) {
       workoutsWithZeroExercises.push(id);
     }
@@ -874,7 +985,13 @@ export function auditCatalogClassification(): CatalogAuditReport {
     if (meta.primaryFocus === 'peitoral-ombro-triceps') {
       pushWorkouts.push({ id: meta.id, title: meta.title, count: meta.exerciseCount });
       // Validação de contaminação cruzada
-      if (meta.category === 'inferiores' || meta.category === 'cardiorespiratorio' || meta.category === 'mobilidade_equilibrio') {
+      if (
+        meta.category === 'inferiores' ||
+        meta.category === 'cardiorespiratorio' ||
+        meta.category === 'mobilidade_equilibrio' ||
+        meta.category === 'full_body' ||
+        meta.category === 'forca_40_plus'
+      ) {
         crossContaminationPushViolations.push(`${meta.id} (${meta.category}) não pode ser push`);
       }
     }
@@ -892,10 +1009,11 @@ export function auditCatalogClassification(): CatalogAuditReport {
     valid: (empurrarPuxar?.exerciseCount || 0) > 0
   };
 
-  const isValid = 
+  const isValid =
     totalWorkouts === 72 &&
     crossContaminationPushViolations.length === 0 &&
     workoutsWithZeroExercises.length === 0 &&
+    workoutsNeedingReview.length === 0 &&
     empurrarPuxarReport.valid;
 
   return {
@@ -908,6 +1026,7 @@ export function auditCatalogClassification(): CatalogAuditReport {
     empurrarPuxarSeguro: empurrarPuxarReport,
     crossContaminationPushViolations,
     workoutsWithZeroExercises,
+    workoutsNeedingReview,
     isValid
   };
 }

@@ -1,9 +1,9 @@
 import { WorkoutExerciseItem } from "../types";
 
 /**
- * RELAÇÕES PÚBLICAS DE TREINOS GRATUITOS (12 Treinos Livres - 47 Prescrições)
+ * RELAÇÕES PÚBLICAS DE TREINOS GRATUITOS (15 Treinos Livres - 59 Prescrições)
  * Destinadas à vitrine pública e execução gratuita sem exigência de credenciais.
- * Prescrições dos 60 treinos Premium NÃO são expostas neste módulo.
+ * Prescrições dos 57 treinos Premium NÃO são expostas neste módulo.
  */
 export const FREE_WORKOUT_EXERCISES: WorkoutExerciseItem[] = [
   {
@@ -149,6 +149,43 @@ export const FREE_WORKOUT_EXERCISES: WorkoutExerciseItem[] = [
     "notes": "Joelhos dobrados para reduzir a alavanca."
   },
   {
+    "workoutId": "w-sup-02",
+    "exerciseId": "ex-remada-unilateral-serrote",
+    "order": 1,
+    "sets": "3",
+    "reps": "10 a 12 cada lado",
+    "rest": "60s",
+    "load": "Halter de 4kg a 6kg"
+  },
+  {
+    "workoutId": "w-sup-02",
+    "exerciseId": "ex-crucifixo-invertido-halteres",
+    "order": 2,
+    "sets": "3",
+    "reps": "12",
+    "rest": "45s",
+    "load": "Halteres leves de 2kg a 3kg",
+    "notes": "Fortalecimento de romboides e deltoide posterior."
+  },
+  {
+    "workoutId": "w-sup-02",
+    "exerciseId": "ex-remada-curvada-halteres",
+    "order": 3,
+    "sets": "3",
+    "reps": "10",
+    "rest": "60s",
+    "load": "Halteres médios"
+  },
+  {
+    "workoutId": "w-sup-02",
+    "exerciseId": "ex-perdigueiro-bird-dog",
+    "order": 4,
+    "sets": "3",
+    "reps": "8 cada lado",
+    "rest": "45s",
+    "load": "Peso corporal"
+  },
+  {
     "workoutId": "w-sup-05",
     "exerciseId": "ex-supino-inclinado-halteres",
     "order": 1,
@@ -183,6 +220,78 @@ export const FREE_WORKOUT_EXERCISES: WorkoutExerciseItem[] = [
     "reps": "12",
     "rest": "60s",
     "load": "Polia média"
+  },
+  {
+    "workoutId": "w-sup-06",
+    "exerciseId": "ex-desenvolvimento-halteres-sentado",
+    "order": 1,
+    "sets": "4",
+    "reps": "10",
+    "rest": "60s",
+    "load": "Halteres"
+  },
+  {
+    "workoutId": "w-sup-06",
+    "exerciseId": "ex-elevacao-lateral-halteres",
+    "order": 2,
+    "sets": "3",
+    "reps": "12",
+    "rest": "45s",
+    "load": "Halteres leves"
+  },
+  {
+    "workoutId": "w-sup-06",
+    "exerciseId": "ex-triceps-corda-polia",
+    "order": 3,
+    "sets": "3",
+    "reps": "12",
+    "rest": "45s",
+    "load": "Polia"
+  },
+  {
+    "workoutId": "w-sup-06",
+    "exerciseId": "ex-triceps-frances-halter",
+    "order": 4,
+    "sets": "3",
+    "reps": "10",
+    "rest": "60s",
+    "load": "Halter médio"
+  },
+  {
+    "workoutId": "w-sup-07",
+    "exerciseId": "ex-puxada-alta-pulley",
+    "order": 1,
+    "sets": "4",
+    "reps": "10 a 12",
+    "rest": "60s",
+    "load": "Polia média"
+  },
+  {
+    "workoutId": "w-sup-07",
+    "exerciseId": "ex-remada-curvada-halteres",
+    "order": 2,
+    "sets": "3",
+    "reps": "10",
+    "rest": "60s",
+    "load": "Halteres"
+  },
+  {
+    "workoutId": "w-sup-07",
+    "exerciseId": "ex-crucifixo-invertido-halteres",
+    "order": 3,
+    "sets": "3",
+    "reps": "12",
+    "rest": "45s",
+    "load": "Halteres leves"
+  },
+  {
+    "workoutId": "w-sup-07",
+    "exerciseId": "ex-rosca-direta-halteres",
+    "order": 4,
+    "sets": "3",
+    "reps": "10",
+    "rest": "45s",
+    "load": "Halteres"
   },
   {
     "workoutId": "w-inf-01",

@@ -1,15 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Search,
   CheckCircle2,
-  AlertCircle,
   Lock,
   Clock,
   Layers,
   Dumbbell,
-  Filter,
-  Sparkles
+  Sparkles,
+  Target,
+  ArrowLeft,
+  RotateCcw
 } from 'lucide-react';
 import {
   CatalogWorkout,
@@ -20,6 +21,7 @@ import {
 import {
   WeekCalendarDayMeta,
   doesWorkoutMatchFocus,
+  filterWorkoutsForDayFocus,
   getFocusLabel,
   getWorkoutSummaryDetails
 } from '../../services/weeklyScheduleService';
@@ -42,12 +44,6 @@ interface WorkoutPickerProps {
   onOpenPremiumInfo?: (workout: CatalogWorkout) => void;
 }
 
-function parseMinutesFromDuration(durationStr?: string): number {
-  if (!durationStr) return 30;
-  const match = durationStr.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : 30;
-}
-
 export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
   isOpen,
   dayItem,
@@ -68,92 +64,82 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
   const [accessFilter, setAccessFilter] = useState<'todos' | 'liberados'>(
     isDemoMode ? 'liberados' : 'todos'
   );
-  const [showOtherFocus, setShowOtherFocus] = useState<boolean>(true);
 
   // Treino candidato selecionado aguardando confirmação explícita do aluno
   const [pendingWorkout, setPendingWorkout] = useState<CatalogWorkout | null>(null);
+
+  // Limpa seleção pendente ao abrir ou trocar o dia selecionado
+  useEffect(() => {
+    if (isOpen) {
+      setPendingWorkout(null);
+      setAccessFilter(isDemoMode ? 'liberados' : 'todos');
+    }
+  }, [isOpen, dayItem?.dateISO, dayItem?.plannedFocus, isDemoMode]);
 
   const catalogWorkouts = useMemo(() => {
     return getAllCatalogWorkouts().filter(w => w.status === 'publicado');
   }, []);
 
+  // Treinos elegíveis estritamente pelo foco/grupamento muscular planejado para o dia
+  const focusEligibleWorkouts = useMemo(() => {
+    return catalogWorkouts.filter(w => doesWorkoutMatchFocus(w, dayItem?.plannedFocus));
+  }, [catalogWorkouts, dayItem?.plannedFocus]);
+
+  // Equipamentos disponíveis dentro do grupamento muscular selecionado
   const availableEquipments = useMemo(() => {
     const set = new Set<string>();
-    catalogWorkouts.forEach(w => {
+    focusEligibleWorkouts.forEach(w => {
       (w.equipments || []).forEach(eq => {
         if (eq && eq.trim()) set.add(eq.trim());
       });
     });
     return Array.from(set).sort();
-  }, [catalogWorkouts]);
+  }, [focusEligibleWorkouts]);
 
   const plannedFocusLabel = getFocusLabel(dayItem?.plannedFocus, dayItem?.plannedFocusLabel);
+  const hasSpecificFocus = Boolean(
+    dayItem?.plannedFocus &&
+      dayItem.plannedFocus !== 'livre' &&
+      dayItem.plannedFocus !== 'todos'
+  );
 
+  // Filtragem estrita: o filtro de grupamento muscular é obrigatório e precede busca, filtros e ordenação
   const filteredAndSortedWorkouts = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-
-    const filtered = catalogWorkouts.filter((w) => {
-      const hasAccess = canUserAccessWorkout(w, userStatus, userRole, purchasedWorkoutIds);
-      if (accessFilter === 'liberados' && !hasAccess) {
-        return false;
-      }
-
-      if (levelFilter !== 'todos' && w.level !== levelFilter) {
-        return false;
-      }
-
-      if (durationFilter !== 'todos') {
-        const mins = parseMinutesFromDuration(w.duration);
-        if (durationFilter === 'curto' && mins > 25) return false;
-        if (durationFilter === 'medio' && (mins <= 25 || mins > 38)) return false;
-        if (durationFilter === 'longo' && mins <= 38) return false;
-      }
-
-      if (equipmentFilter !== 'todos') {
-        const eqs = (w.equipments || []).map(e => e.toLowerCase());
-        if (!eqs.includes(equipmentFilter.toLowerCase())) return false;
-      }
-
-      const matchesFocus = doesWorkoutMatchFocus(w, dayItem.plannedFocus);
-      if (!showOtherFocus && !matchesFocus) {
-        return false;
-      }
-
-      if (query) {
-        const haystack = `${w.title} ${w.objective} ${w.description} ${(w.equipments || []).join(' ')}`.toLowerCase();
-        if (!haystack.includes(query)) return false;
-      }
-
-      return true;
-    });
-
-    // Prioriza no topo:
-    // 1. Treinos compatíveis com o foco planejado para o dia
-    // 2. Treinos liberados para o nível de acesso do aluno
-    return filtered.sort((a, b) => {
-      const aMatch = doesWorkoutMatchFocus(a, dayItem.plannedFocus) ? 1 : 0;
-      const bMatch = doesWorkoutMatchFocus(b, dayItem.plannedFocus) ? 1 : 0;
-      if (aMatch !== bMatch) return bMatch - aMatch;
-
-      const aAccess = canUserAccessWorkout(a, userStatus, userRole, purchasedWorkoutIds) ? 1 : 0;
-      const bAccess = canUserAccessWorkout(b, userStatus, userRole, purchasedWorkoutIds) ? 1 : 0;
-      if (aAccess !== bAccess) return bAccess - aAccess;
-
-      return a.title.localeCompare(b.title);
+    return filterWorkoutsForDayFocus(catalogWorkouts, {
+      plannedFocus: dayItem?.plannedFocus,
+      searchTerm,
+      levelFilter,
+      durationFilter,
+      equipmentFilter,
+      accessFilter,
+      userStatus,
+      userRole,
+      purchasedWorkoutIds
     });
   }, [
     catalogWorkouts,
+    dayItem?.plannedFocus,
     accessFilter,
     levelFilter,
     durationFilter,
     equipmentFilter,
-    showOtherFocus,
     searchTerm,
-    dayItem?.plannedFocus,
     userStatus,
     userRole,
     purchasedWorkoutIds
   ]);
+
+  const hasActiveSecondaryFilters =
+    levelFilter !== 'todos' ||
+    durationFilter !== 'todos' ||
+    equipmentFilter !== 'todos' ||
+    searchTerm.trim() !== '';
+
+  const hasUnlockedInFocusWithoutSecondaryFilters = useMemo(() => {
+    return focusEligibleWorkouts.some(w =>
+      canUserAccessWorkout(w, userStatus, userRole, purchasedWorkoutIds)
+    );
+  }, [focusEligibleWorkouts, userStatus, userRole, purchasedWorkoutIds]);
 
   if (!isOpen || !dayItem || !dayMeta) return null;
 
@@ -176,9 +162,10 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
     setPendingWorkout(null);
   };
 
-  const pendingMatchesFocus = pendingWorkout
-    ? doesWorkoutMatchFocus(pendingWorkout, dayItem.plannedFocus)
-    : true;
+  const handleCloseModal = () => {
+    setPendingWorkout(null);
+    onClose();
+  };
 
   return (
     <div
@@ -186,31 +173,34 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
       aria-modal="true"
       aria-label={isReplacing ? 'Trocar treino do dia' : 'Escolher treino do dia'}
       data-testid="workout-picker-modal"
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto overflow-x-hidden"
     >
       <div className="bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Cabeçalho do Modal */}
-        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-950/80">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+        <div className="p-3.5 sm:p-5 border-b border-slate-800 flex items-start justify-between gap-2.5 bg-slate-950/80">
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 {dayMeta.formattedFullDate}
               </span>
-              <span className="text-[11px] font-bold text-slate-300">
-                Foco planejado: <strong className="text-emerald-400">{plannedFocusLabel}</strong>
+              <span
+                data-testid="picker-selected-focus-badge"
+                className="text-[11px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 max-w-full"
+              >
+                <Target className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span className="truncate">
+                  {hasSpecificFocus ? `Foco exclusivo: ${plannedFocusLabel}` : `Foco: ${plannedFocusLabel}`}
+                </span>
               </span>
             </div>
-            <h2 className="text-base sm:text-xl font-black text-white">
+            <h2 className="text-base sm:text-xl font-black text-white leading-tight">
               {isReplacing ? 'Trocar treino deste dia' : 'Escolher treino para este dia'}
             </h2>
           </div>
 
           <button
             type="button"
-            onClick={() => {
-              setPendingWorkout(null);
-              onClose();
-            }}
+            onClick={handleCloseModal}
             data-testid="close-workout-picker-btn"
             aria-label="Fechar seletor de treinos"
             className="min-h-[44px] min-w-[44px] rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center justify-center shrink-0"
@@ -219,22 +209,24 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
           </button>
         </div>
 
-        {/* Barra de Busca e Filtros Confiáveis (Nível, Duração, Equipamento, Foco) */}
-        <div className="p-3.5 sm:p-4 bg-slate-900 border-b border-slate-800 space-y-2.5">
+        {/* Barra de Busca e Filtros Transversais (sempre restritos ao foco do dia) */}
+        <div className="p-3 sm:p-4 bg-slate-900 border-b border-slate-800 space-y-2.5">
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-            <div className="sm:col-span-6 relative">
+            <div className="sm:col-span-5 relative min-w-0">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por nome, foco ou equipamento..."
+                data-testid="picker-search-input"
+                placeholder="Buscar neste foco..."
                 className="w-full min-h-[42px] bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl pl-9 pr-8 text-xs text-white placeholder-slate-500 focus:outline-none"
               />
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm('')}
+                  aria-label="Limpar busca"
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -242,14 +234,14 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
               )}
             </div>
 
-            <div className="sm:col-span-6 grid grid-cols-3 gap-1.5">
+            <div className="sm:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-1.5 min-w-0">
               {/* Filtro Nível */}
               <select
                 aria-label="Filtrar por nível"
                 data-testid="picker-level-filter"
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value as any)}
-                className="min-h-[42px] bg-slate-950 border border-slate-800 rounded-xl px-2 text-[11px] font-bold text-slate-200 focus:outline-none focus:border-emerald-500"
+                className="w-full min-w-0 min-h-[42px] bg-slate-950 border border-slate-800 rounded-xl px-2 text-[11px] font-bold text-slate-200 focus:outline-none focus:border-emerald-500"
               >
                 <option value="todos">Todos os níveis</option>
                 <option value="iniciante">Iniciante</option>
@@ -263,7 +255,7 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
                 data-testid="picker-duration-filter"
                 value={durationFilter}
                 onChange={(e) => setDurationFilter(e.target.value as any)}
-                className="min-h-[42px] bg-slate-950 border border-slate-800 rounded-xl px-2 text-[11px] font-bold text-slate-200 focus:outline-none focus:border-emerald-500"
+                className="w-full min-w-0 min-h-[42px] bg-slate-950 border border-slate-800 rounded-xl px-2 text-[11px] font-bold text-slate-200 focus:outline-none focus:border-emerald-500"
               >
                 <option value="todos">Qualquer duração</option>
                 <option value="curto">Até 25 min</option>
@@ -277,9 +269,9 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
                 data-testid="picker-equipment-filter"
                 value={equipmentFilter}
                 onChange={(e) => setEquipmentFilter(e.target.value)}
-                className="min-h-[42px] bg-slate-950 border border-slate-800 rounded-xl px-2 text-[11px] font-bold text-slate-200 focus:outline-none focus:border-emerald-500"
+                className="col-span-2 sm:col-span-1 w-full min-w-0 min-h-[42px] bg-slate-950 border border-slate-800 rounded-xl px-2 text-[11px] font-bold text-slate-200 focus:outline-none focus:border-emerald-500"
               >
-                <option value="todos">Equipamentos</option>
+                <option value="todos">Todos os equipamentos</option>
                 {availableEquipments.map(eq => (
                   <option key={eq} value={eq}>
                     {eq}
@@ -290,43 +282,31 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowOtherFocus(prev => !prev)}
-                data-testid="toggle-other-focus-btn"
-                className={`min-h-[34px] px-3 py-1 rounded-lg border font-bold flex items-center gap-1.5 transition ${
-                  !showOtherFocus
-                    ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
-                    : 'bg-slate-950 border-slate-800 text-slate-300'
-                }`}
-              >
-                <Filter className="w-3 h-3 text-emerald-400" />
-                <span>
-                  {!showOtherFocus
-                    ? `Apenas foco: ${plannedFocusLabel}`
-                    : 'Priorizando foco do dia no topo'}
-                </span>
-              </button>
-
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               <button
                 type="button"
                 onClick={() =>
                   setAccessFilter(prev => (prev === 'liberados' ? 'todos' : 'liberados'))
                 }
                 data-testid="toggle-access-filter-btn"
-                className={`min-h-[34px] px-3 py-1 rounded-lg border font-bold transition ${
+                className={`min-h-[36px] px-3 py-1 rounded-lg border font-bold transition ${
                   accessFilter === 'liberados'
                     ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
                     : 'bg-slate-950 border-slate-800 text-slate-300'
                 }`}
               >
-                {accessFilter === 'liberados' ? 'Apenas liberados p/ minha conta' : 'Todos (Free + Premium)'}
+                {accessFilter === 'liberados'
+                  ? 'Apenas liberados (neste foco)'
+                  : 'Todos (Free + Premium)'}
               </button>
             </div>
 
-            <span className="text-slate-400 font-semibold">
-              {filteredAndSortedWorkouts.length} opções disponíveis
+            <span
+              data-testid="picker-results-count"
+              className="text-slate-300 font-bold"
+            >
+              {filteredAndSortedWorkouts.length}{' '}
+              {filteredAndSortedWorkouts.length === 1 ? 'treino disponível' : 'treinos disponíveis'}
             </span>
           </div>
         </div>
@@ -335,23 +315,17 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
         {pendingWorkout && (
           <div
             data-testid="picker-confirmation-banner"
-            className="p-4 bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 border-b border-emerald-500/50 space-y-3 animate-fadeIn"
+            className="p-3.5 sm:p-4 bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 border-b border-emerald-500/50 space-y-3 animate-fadeIn"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500 text-slate-950">
                     Confirmação necessária
                   </span>
-                  {!pendingMatchesFocus && (
-                    <span
-                      data-testid="different-focus-warning"
-                      className="text-[11px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/40 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1"
-                    >
-                      <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                      Atenção: este treino tem foco diferente de "{plannedFocusLabel}"
-                    </span>
-                  )}
+                  <span className="text-[10px] font-bold text-emerald-300">
+                    {plannedFocusLabel}
+                  </span>
                 </div>
 
                 <p className="text-xs sm:text-sm font-bold text-white">
@@ -391,31 +365,119 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
           </div>
         )}
 
-        {/* Lista de Treinos Disponíveis */}
-        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-2.5">
+        {/* Lista de Treinos Disponíveis (estritamente do foco selecionado) */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2.5">
           {filteredAndSortedWorkouts.length === 0 ? (
-            <div className="p-8 text-center bg-slate-950/50 border border-slate-800 rounded-2xl space-y-2">
+            <div
+              data-testid="picker-empty-state"
+              className="p-5 sm:p-8 text-center bg-slate-950/60 border border-slate-800 rounded-2xl space-y-4"
+            >
               <Dumbbell className="w-8 h-8 text-slate-500 mx-auto" />
-              <p className="text-sm font-bold text-white">
-                Nenhum treino encontrado com estes filtros
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchTerm('');
-                  setLevelFilter('todos');
-                  setDurationFilter('todos');
-                  setEquipmentFilter('todos');
-                  setShowOtherFocus(true);
-                }}
-                className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-bold"
-              >
-                Limpar filtros
-              </button>
+              <div className="space-y-1.5 max-w-md mx-auto">
+                <p className="text-sm sm:text-base font-black text-white">
+                  {accessFilter === 'liberados' && hasActiveSecondaryFilters && hasUnlockedInFocusWithoutSecondaryFilters
+                    ? 'Nenhum treino gratuito neste foco corresponde aos filtros aplicados.'
+                    : 'Não encontramos treinos para este grupamento com os filtros escolhidos.'}
+                </p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {accessFilter === 'liberados' && hasActiveSecondaryFilters && hasUnlockedInFocusWithoutSecondaryFilters ? (
+                    <>
+                      Os filtros de nível, duração ou equipamento não encontraram opções gratuitas dentro de{' '}
+                      <strong className="text-emerald-300">{plannedFocusLabel}</strong>. Limpe os filtros abaixo ou veja todas as opções deste mesmo grupamento.
+                    </>
+                  ) : (
+                    <>
+                      O filtro de grupamento (<strong className="text-emerald-300">{plannedFocusLabel}</strong>) foi mantido para proteger sua divisão semanal. Limpe os filtros abaixo ou volte ao planejamento para alterar o foco do dia.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setLevelFilter('todos')}
+                  disabled={levelFilter === 'todos'}
+                  data-testid="clear-level-filter-btn"
+                  className={`min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border transition ${
+                    levelFilter !== 'todos'
+                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50 text-emerald-300'
+                      : 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Limpar filtros de nível</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDurationFilter('todos')}
+                  disabled={durationFilter === 'todos'}
+                  data-testid="clear-duration-filter-btn"
+                  className={`min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border transition ${
+                    durationFilter !== 'todos'
+                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50 text-emerald-300'
+                      : 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Limpar filtros de duração</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEquipmentFilter('todos')}
+                  disabled={equipmentFilter === 'todos'}
+                  data-testid="clear-equipment-filter-btn"
+                  className={`min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border transition ${
+                    equipmentFilter !== 'todos'
+                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50 text-emerald-300'
+                      : 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Limpar filtros de equipamentos</span>
+                </button>
+
+                {searchTerm.trim() !== '' && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm('')}
+                    data-testid="clear-search-filter-btn"
+                    className="min-h-[40px] px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 text-xs font-bold inline-flex items-center gap-1.5 transition"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Limpar busca</span>
+                  </button>
+                )}
+
+                {accessFilter === 'liberados' && (
+                  <button
+                    type="button"
+                    onClick={() => setAccessFilter('todos')}
+                    data-testid="show-all-access-same-focus-btn"
+                    className="min-h-[40px] px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold inline-flex items-center gap-1.5 transition"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Ver Free + Premium deste foco</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-800/80 flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  data-testid="back-to-planning-btn"
+                  className="min-h-[42px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold inline-flex items-center gap-1.5 transition"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Voltar ao planejamento para alterar o foco do dia</span>
+                </button>
+              </div>
             </div>
           ) : (
             filteredAndSortedWorkouts.map((w) => {
-              const matchesFocus = doesWorkoutMatchFocus(w, dayItem.plannedFocus);
               const hasAccess = canUserAccessWorkout(w, userStatus, userRole, purchasedWorkoutIds);
               const isCurrent = currentWorkout?.id === w.id;
               const isSelectedCandidate = pendingWorkout?.id === w.id;
@@ -435,27 +497,31 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
                 >
                   <div className="space-y-1.5 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {matchesFocus ? (
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 inline-flex items-center gap-1">
-                          <Sparkles className="w-2.5 h-2.5" /> Compatível com o foco do dia
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 inline-flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                        <span>{plannedFocusLabel}</span>
+                      </span>
+
+                      {w.accessLevel === 'free' ? (
+                        <span
+                          data-testid={`picker-badge-free-${w.id}`}
+                          className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                        >
+                          Gratuito
+                        </span>
+                      ) : hasAccess ? (
+                        <span
+                          data-testid={`picker-badge-unlocked-${w.id}`}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-500/30"
+                        >
+                          Premium • Liberado
                         </span>
                       ) : (
                         <span
-                          data-testid={`picker-focus-mismatch-${w.id}`}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1"
+                          data-testid={`picker-badge-premium-${w.id}`}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1"
                         >
-                          <AlertCircle className="w-2.5 h-2.5 text-amber-400" />
-                          Foco diferente do planejado para o dia
-                        </span>
-                      )}
-
-                      {hasAccess ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-emerald-300">
-                          Liberado
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
-                          <Lock className="w-2.5 h-2.5" /> Premium
+                          <Lock className="w-2.5 h-2.5 shrink-0" /> Premium
                         </span>
                       )}
 
@@ -476,11 +542,11 @@ export const WorkoutPicker: React.FC<WorkoutPickerProps> = ({
 
                     <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-slate-300 font-semibold pt-0.5">
                       <span className="inline-flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-emerald-400" /> {w.duration}
+                        <Clock className="w-3 h-3 text-emerald-400 shrink-0" /> {w.duration}
                       </span>
                       {summary.exerciseCount > 0 && (
                         <span className="inline-flex items-center gap-1">
-                          <Layers className="w-3 h-3 text-teal-400" /> {summary.exerciseCount} exercícios
+                          <Layers className="w-3 h-3 text-teal-400 shrink-0" /> {summary.exerciseCount} exercícios
                         </span>
                       )}
                       <span className="capitalize">Nível {w.level}</span>

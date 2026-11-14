@@ -177,7 +177,7 @@ export const GlobalAuthGate: React.FC<GlobalAuthGateProps> = ({
     if (res.success && res.requiresEmailConfirmation) {
       setUnconfirmedEmail(res.email || email);
       setInfoMsg(
-        `Conta criada com sucesso! Enviamos um código de verificação para ${res.email || email}. Por favor, confirme seu e-mail para ativar seu acesso aos 12 treinos gratuitos.`
+        `Conta criada com sucesso! Enviamos um código de verificação para ${res.email || email}. Por favor, confirme seu e-mail para ativar seu acesso aos 15 treinos gratuitos.`
       );
       setView('verify_email');
     } else if (res.error) {
@@ -316,7 +316,7 @@ export const GlobalAuthGate: React.FC<GlobalAuthGateProps> = ({
           <div className="w-full bg-slate-900/95 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-5 animate-fadeIn">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">
-                12 Treinos Gratuitos
+                15 Treinos Gratuitos
               </span>
               <button
                 type="button"
@@ -332,7 +332,7 @@ export const GlobalAuthGate: React.FC<GlobalAuthGateProps> = ({
                 Comece sua melhor fase
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Crie sua conta gratuita e tenha acesso aos primeiros 12 treinos.
+                Crie sua conta gratuita e tenha acesso aos 15 treinos gratuitos.
               </p>
             </div>
 
@@ -720,7 +720,7 @@ export const GlobalAuthGate: React.FC<GlobalAuthGateProps> = ({
                 Confirme seu E-mail
               </h2>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Para liberar seu acesso gratuito aos 12 treinos, digite o código de 6 dígitos enviado para:
+                Para liberar seu acesso gratuito aos 15 treinos, digite o código de 6 dígitos enviado para:
               </p>
               <p className="text-xs font-mono font-bold text-emerald-400 bg-slate-950 py-2 px-3 rounded-xl border border-slate-800 break-all">
                 {unconfirmedEmail || email || 'seu-email@exemplo.com'}

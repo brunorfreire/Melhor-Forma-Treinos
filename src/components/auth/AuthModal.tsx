@@ -181,7 +181,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {user ? 'Minha Conta de Aluno' : tab === 'login' ? 'Entrar no Play' : tab === 'register' ? 'Comece sua melhor fase' : 'Recuperar Senha'}
               </h3>
               <span className="text-[10px] text-slate-400 font-medium">
-                {user ? user.email : tab === 'register' ? 'Crie sua conta gratuita e tenha acesso aos primeiros 12 treinos.' : 'Acesso a treinos e histórico'}
+                {user ? user.email : tab === 'register' ? 'Crie sua conta gratuita e tenha acesso aos 15 treinos gratuitos.' : 'Acesso a treinos e histórico'}
               </span>
             </div>
           </div>
@@ -240,7 +240,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           <Crown className="w-3.5 h-3.5 fill-current" /> Assinante Premium
                         </>
                       ) : (
-                        'Acesso Gratuito (12 Treinos)'
+                        'Acesso Gratuito (15 Treinos)'
                       )}
                     </span>
                   </div>
